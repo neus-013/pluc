@@ -14,5 +14,7 @@
   "deactivateModule": "Desactivar mòdul",
   "structuredMode": "Estructurat",
   "flexibleMode": "Flexible",
-  "minimalMode": "Minimal"
+  "minimalMode": "Minimal",
+  "save": "Guardar",
+  "create": "Crear"
 }
