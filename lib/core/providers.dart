@@ -8,6 +8,8 @@ import 'package:pluc/features/journal/domain/repositories/journal_repository.dar
 import 'package:pluc/features/journal/data/repositories/journal_repository_impl.dart';
 import 'package:pluc/features/calendar/domain/repositories/calendar_repository.dart';
 import 'package:pluc/features/calendar/data/repositories/calendar_repository_impl.dart';
+import 'events/event_bus.dart';
+import 'services/preset_service.dart';
 
 /// ============================================================================
 /// DATABASE PROVIDER
@@ -51,5 +53,23 @@ final calendarRepositoryProvider = Provider<CalendarRepository>((ref) {
     taskRepository: taskRepo,
     journalRepository: journalRepo,
   );
+});
+
+/// ============================================================================
+/// EVENT BUS PROVIDER
+/// Strongly typed, broadcast-safe event system.
+/// New instance per widget tree (not a static singleton).
+/// ============================================================================
+final eventBusProvider = Provider<EventBus>((ref) {
+  return EventBus();
+});
+
+/// ============================================================================
+/// PRESET SERVICE PROVIDER
+/// Handles applying preset configurations to features.
+/// ============================================================================
+final presetServiceProvider = Provider<PresetService>((ref) {
+  final eventBus = ref.read(eventBusProvider);
+  return PresetService(eventBus: eventBus);
 });
 
