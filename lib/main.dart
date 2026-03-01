@@ -48,6 +48,7 @@ class _PlucAppState extends State<PlucApp> {
         '/journal_entry': (_) => const JournalEntryScreen(),
         '/tasks': (_) => const TaskScreen(),
       },
+    ),
     );
   }
 }

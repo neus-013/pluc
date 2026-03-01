@@ -14,10 +14,19 @@ A modular cross-platform life management application built with Flutter, Dart, a
 
 ## Getting Started
 
-1. Install Flutter (latest stable) on your machine.
-2. Run `flutter pub get` to install dependencies.
-3. To generate localized messages: `flutter gen-l10n`.
-4. Launch the app with `flutter run`.
+⚠️ **Note**: Flutter SDK is required to run this project.
+
+See [SETUP.md](SETUP.md) for detailed setup instructions including:
+- Installing Flutter SDK
+- Configuring dependencies
+- Generating database and localization code
+- Creating a GitHub remote repository
+
+Quick start (if Flutter is already installed):
+1. `flutter pub get`
+2. `dart run build_runner build`
+3. `flutter gen-l10n`
+4. `flutter run`
 
 ## Project Structure
 
