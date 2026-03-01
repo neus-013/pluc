@@ -1,0 +1,8 @@
+- Follow Clean Architecture principles: core, features, presentation
+- Use Riverpod for dependency injection and state management
+- Localize all user-facing strings (en, es, ca)
+- Keep modules decoupled with EventBus for communication
+- Use feature toggles for module configuration
+- Database changes must update Drift schema and run build_runner
+- Extend AuthRepository abstraction for new authentication methods
+- Follow conventional commit format (feat:, fix:, chore:, docs:)
