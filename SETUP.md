@@ -8,21 +8,25 @@ Since Flutter is not installed on your system, follow these steps:
    - Run `flutter doctor` to verify installation
 
 2. **Install Dependencies**
+
    ```bash
    flutter pub get
    ```
 
 3. **Generate Database Code**
+
    ```bash
    dart run build_runner build
    ```
 
 4. **Generate Localization Files**
+
    ```bash
    flutter gen-l10n
    ```
 
 5. **Run the App**
+
    ```bash
    flutter run -d <device>
    ```

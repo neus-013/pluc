@@ -17,12 +17,14 @@ A modular cross-platform life management application built with Flutter, Dart, a
 ⚠️ **Note**: Flutter SDK is required to run this project.
 
 See [SETUP.md](SETUP.md) for detailed setup instructions including:
+
 - Installing Flutter SDK
 - Configuring dependencies
 - Generating database and localization code
 - Creating a GitHub remote repository
 
 Quick start (if Flutter is already installed):
+
 1. `flutter pub get`
 2. `dart run build_runner build`
 3. `flutter gen-l10n`

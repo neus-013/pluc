@@ -29,6 +29,7 @@ eventBus.emit('task_created', {'taskId': '123', 'title': 'My Task'});
 ```
 
 **Issues:**
+
 - Typos in event names silent fail
 - No IDE autocomplete for event payloads
 - Runtime errors if payload structure changes
@@ -42,7 +43,7 @@ Strongly typed event classes extending `AppEvent`:
 /// Base event class - all events inherit from this
 abstract class AppEvent {
   final DateTime timestamp;
-  AppEvent({DateTime? timestamp}) 
+  AppEvent({DateTime? timestamp})
     : timestamp = timestamp ?? DateTime.now();
 }
 
@@ -62,6 +63,7 @@ class TaskCreatedEvent extends AppEvent {
 ```
 
 **Benefits:**
+
 - Compile-time type checking
 - IDE autocomplete and navigation
 - Self-documenting event structure
@@ -116,6 +118,7 @@ class EventBus {
 ```
 
 **Why This Matters:**
+
 - **Testability**: Mock eventBus per test
 - **Widget Tree Isolation**: Different parts of app can have independent event flows
 - **Broadcast Safety**: Listeners can emit events without causing infinite loops
@@ -190,7 +193,7 @@ class PresetService {
   ) async {
     // Apply preset, return new list (immutable)
     final updated = <FeatureToggle>[];
-    
+
     for (final toggle in currentToggles) {
       if (preset.enabledFeatures.contains(toggle.name)) {
         updated.add(toggle.copyWith(enabled: true));
@@ -285,21 +288,21 @@ final service = ref.read(presetServiceProvider);
 
 ### Type Safety
 
-| Before | After |
-|--------|-------|
+| Before                             | After                                |
+| ---------------------------------- | ------------------------------------ |
 | `eventBus.on('task_created', ...)` | `eventBus.on<TaskCreatedEvent>(...)` |
-| Typos fail at runtime | Typos caught at compile time |
-| Payload type unknown | Event structure visible to IDE |
-| Hard to refactor | Easy cross-reference |
+| Typos fail at runtime              | Typos caught at compile time         |
+| Payload type unknown               | Event structure visible to IDE       |
+| Hard to refactor                   | Easy cross-reference                 |
 
 ### Separation of Concerns
 
-| Concern | Before | After |
-|---------|--------|-------|
-| **Event Names** | Strings scattered in code | Single source of truth: `app_events.dart` |
-| **Feature Toggle Logic** | Scattered across modules | Centralized: `PresetService` |
-| **Preset Application** | Manual, error-prone | Safe, immutable operations |
-| **Event Audit** | No logging | `PresetAppliedEvent` emitted |
+| Concern                  | Before                    | After                                     |
+| ------------------------ | ------------------------- | ----------------------------------------- |
+| **Event Names**          | Strings scattered in code | Single source of truth: `app_events.dart` |
+| **Feature Toggle Logic** | Scattered across modules  | Centralized: `PresetService`              |
+| **Preset Application**   | Manual, error-prone       | Safe, immutable operations                |
+| **Event Audit**          | No logging                | `PresetAppliedEvent` emitted              |
 
 ### Testability
 
@@ -315,6 +318,7 @@ expect(mockEventBus.emittedEvents, contains(isA<PresetAppliedEvent>()));
 ### Scalability
 
 **Adding New Event:**
+
 1. Create class extending `AppEvent`
 2. Add to `app_events.dart`
 3. Use immediately with full type safety
@@ -323,7 +327,7 @@ expect(mockEventBus.emittedEvents, contains(isA<PresetAppliedEvent>()));
 class HabitCompletedEvent extends AppEvent {
   final String habitId;
   final DateTime completionDate;
-  
+
   HabitCompletedEvent({...});
 }
 
@@ -332,6 +336,7 @@ eventBus.on<HabitCompletedEvent>((event) { ... });
 ```
 
 **Adding New Preset:**
+
 ```dart
 static Map<String, PresetDefinition> createDefaultPresets(String moduleId) {
   return {
@@ -345,30 +350,37 @@ static Map<String, PresetDefinition> createDefaultPresets(String moduleId) {
 ## Architectural Risks Reduced
 
 ### 1. **Event Name Typos** ❌ → ✅
+
 - **Risk**: Silent failures, debugging nightmare
 - **Reduced**: Compile-time checks + IDE support
 
 ### 2. **Global State Mutation** ❌ → ✅
+
 - **Risk**: Race conditions, hard to test, memory leaks
 - **Reduced**: Injected instances, scoped to widget tree
 
 ### 3. **Unchecked Event Payloads** ❌ → ✅
+
 - **Risk**: Type casting errors, null pointer exceptions
 - **Reduced**: Strongly typed properties
 
 ### 4. **Feature Toggling Scattered Logic** ❌ → ✅
+
 - **Risk**: Inconsistent behavior, hard to audit
 - **Reduced**: Centralized `PresetService` with event emission
 
 ### 5. **Listener Side Effects** ❌ → ✅
+
 - **Risk**: One broken listener stops event propagation
 - **Reduced**: Error handling, independent listener execution
 
 ### 6. **Event Flow Debugging** ❌ → ✅
+
 - **Risk**: Hard to trace which listeners respond to events
 - **Reduced**: Strong typing makes event flow obvious
 
 ### 7. **Testing Event System** ❌ → ✅
+
 - **Risk**: Global singleton hard to isolate
 - **Reduced**: Dependency injection enables clean mocks
 
@@ -377,12 +389,14 @@ static Map<String, PresetDefinition> createDefaultPresets(String moduleId) {
 ## Migration Path
 
 ### Old Code (Unsupported)
+
 ```dart
 // Don't use - kept for reference
 eventBus.on('task_created', (payload) { ... });
 ```
 
 ### New Code (Standard)
+
 ```dart
 final eventBus = ref.read(eventBusProvider);
 eventBus.on<TaskCreatedEvent>((event) { ... });
@@ -392,11 +406,11 @@ eventBus.on<TaskCreatedEvent>((event) { ... });
 
 ## Summary
 
-| Aspect | Improvement |
-|--------|------------|
-| **Type Safety** | 100% compile-time checked |
-| **Testability** | Injectable, mockable |
+| Aspect              | Improvement                        |
+| ------------------- | ---------------------------------- |
+| **Type Safety**     | 100% compile-time checked          |
+| **Testability**     | Injectable, mockable               |
 | **Maintainability** | Self-documenting, no magic strings |
-| **Scalability** | Easy to add events/presets |
-| **Reliability** | Error handling, broadcast-safe |
-| **Auditability** | Preset changes emitted as events |
+| **Scalability**     | Easy to add events/presets         |
+| **Reliability**     | Error handling, broadcast-safe     |
+| **Auditability**    | Preset changes emitted as events   |

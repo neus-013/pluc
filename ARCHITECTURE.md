@@ -31,6 +31,7 @@ abstract class JournalRepository {
 ```
 
 **Key Benefits:**
+
 - UI layer depends on abstractions, not implementations
 - Modules are decoupled from database technology
 - Easy to mock for testing
@@ -45,7 +46,7 @@ Contains **implementations** that use Drift:
 // lib/features/journal/data/repositories/journal_repository_impl.dart
 class JournalRepositoryImpl implements JournalRepository {
   final AppDatabase db;
-  
+
   @override
   Future<List<JournalEntry>> getEntriesByDateRange(...) async {
     final entries = await (db.select(db.journalEntries)
@@ -57,6 +58,7 @@ class JournalRepositoryImpl implements JournalRepository {
 ```
 
 **Key Benefits:**
+
 - Drift encapsulated; domain layer never knows about it
 - Mappers convert database rows to domain entities
 - All database logic isolated here
@@ -70,15 +72,16 @@ Each module defines entities implementing `SchedulableEntity`:
 ```dart
 class JournalEntry extends BaseEntity implements SchedulableEntity {
   final String content;
-  
+
   @override
   final DateTime? startDate;
-  
+
   // Immutable with copyWith pattern
 }
 ```
 
 **Key Benefits:**
+
 - Type-safe across modules
 - Entities are immutable (Riverpod-friendly)
 - Can be linked via `EntityRelation` with type safety
@@ -140,7 +143,7 @@ class CalendarRepositoryImpl implements CalendarRepository {
     // Delegate to other repositories
     final tasks = await taskRepository.getTasksByDateRange(start, end);
     final entries = await journalRepository.getEntriesByDateRange(start, end);
-    
+
     // Combine and sort
     return [...tasks, ...entries];
   }
@@ -148,6 +151,7 @@ class CalendarRepositoryImpl implements CalendarRepository {
 ```
 
 **Key Benefits:**
+
 - Calendar never touches database
 - Adding new modules (Habits, Health, etc.) = just add more repositories
 - Each module can implement its own storage strategy later
@@ -185,6 +189,7 @@ Implementations → Database
 Adding a new module (e.g., Habits) follows the same pattern:
 
 1. **Domain**: `lib/features/habits/domain/repositories/habit_repository.dart`
+
    ```dart
    abstract class HabitRepository {
      Future<List<Habit>> getHabitsByDateRange(DateTime start, DateTime end);
@@ -192,11 +197,13 @@ Adding a new module (e.g., Habits) follows the same pattern:
    ```
 
 2. **Data**: `lib/features/habits/data/repositories/habit_repository_impl.dart`
+
    ```dart
    class HabitRepositoryImpl implements HabitRepository { ... }
    ```
 
 3. **Provider**: Add to `lib/core/providers.dart`
+
    ```dart
    final habitRepositoryProvider = Provider<HabitRepository>((ref) {
      final db = ref.read(databaseProvider);
@@ -208,7 +215,7 @@ Adding a new module (e.g., Habits) follows the same pattern:
    ```dart
    class CalendarRepositoryImpl {
      final HabitRepository habitRepository;
-     
+
      @override
      Future<List<SchedulableItem>> getSchedulableItems(...) async {
        final habits = await habitRepository.getHabitsByDateRange(...);
@@ -220,6 +227,7 @@ Adding a new module (e.g., Habits) follows the same pattern:
 ## What the UI Cannot Do (Enforced by Architecture)
 
 ❌ **Forbidden**:
+
 ```dart
 // UI directly importing Drift
 import 'package:pluc/core/database.dart';
@@ -229,6 +237,7 @@ final tasks = await appDb.select(appDb.tasks).get();
 ```
 
 ✅ **Correct**:
+
 ```dart
 // UI only knows about repositories
 final tasks = await ref.read(taskRepositoryProvider).getAllTasks();
@@ -253,13 +262,13 @@ ref.read(taskRepositoryProvider).overrideWithValue(MockTaskRepository());
 
 ## Summary: Improvements
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| **UI Database Access** | Direct to Drift tables | Only through repositories |
-| **Module Coupling** | Tightly coupled via DB | Loosely coupled via interfaces |
-| **Calendar DB Queries** | Direct multi-table queries | Delegates to modules |
-| **Adding Modules** | Modify Calendar & DB schema | Just add repository |
-| **Testing** | Requires database mocks | Simple interface mocks |
-| **Future Support** | Hard to add new data sources | Trivial (new implementation) |
+| Aspect                  | Before                       | After                          |
+| ----------------------- | ---------------------------- | ------------------------------ |
+| **UI Database Access**  | Direct to Drift tables       | Only through repositories      |
+| **Module Coupling**     | Tightly coupled via DB       | Loosely coupled via interfaces |
+| **Calendar DB Queries** | Direct multi-table queries   | Delegates to modules           |
+| **Adding Modules**      | Modify Calendar & DB schema  | Just add repository            |
+| **Testing**             | Requires database mocks      | Simple interface mocks         |
+| **Future Support**      | Hard to add new data sources | Trivial (new implementation)   |
 
 This architecture makes scaling to iOS, macOS, and sync layers straightforward—each can have its own data layer implementation while domain logic remains unchanged.
