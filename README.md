@@ -22,6 +22,7 @@ A modular cross-platform life management application built with Flutter, Dart, a
 ## Project Structure
 
 The project is organized by features under `lib/`:
+
 ```
 lib/
   core/
@@ -44,4 +45,4 @@ This repository is initialized with a clean commit history and a Flutter-style `
 
 ---
 
-*Initial commit*
+_Initial commit_

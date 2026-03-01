@@ -1,6 +1,6 @@
 name: pluc
 description: "Modular cross-platform life management application"
-publish_to: 'none'
+publish_to: "none"
 version: 0.1.0+1
 
 environment:
@@ -16,6 +16,7 @@ dependencies:
   drift_flutter: ^2.7.0
   path_provider: ^2.0.0
   intl: ^0.18.0
+  crypto: ^3.0.0
 
 dev_dependencies:
   flutter_test:

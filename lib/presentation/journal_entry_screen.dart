@@ -32,7 +32,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
               onPressed: () {
                 // TODO: save entry using repository
               },
-              child: Text('Save'),
+              child: Text(strings.save),
             ),
           ],
         ),
