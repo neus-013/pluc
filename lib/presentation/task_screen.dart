@@ -23,18 +23,18 @@ class _TaskScreenState extends State<TaskScreen> {
           children: [
             TextField(
               controller: _titleController,
-              decoration: InputDecoration(labelText: 'Title'),
+              decoration: InputDecoration(labelText: strings.tasks),
             ),
             TextField(
               controller: _descController,
-              decoration: InputDecoration(labelText: 'Description'),
+              decoration: InputDecoration(labelText: strings.tasks),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
                 // TODO: save task
               },
-              child: Text('Create'),
+              child: Text(strings.tasks),
             ),
           ],
         ),
