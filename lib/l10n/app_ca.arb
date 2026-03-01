@@ -1,0 +1,18 @@
+{
+  "@@locale": "ca",
+  "appTitle": "Pluc",
+  "loginTitle": "Inici de sessió",
+  "username": "Nom d'usuari",
+  "password": "Contrasenya",
+  "signIn": "Iniciar sessió",
+  "signOut": "Tancar sessió",
+  "calendar": "Calendari",
+  "journal": "Diari",
+  "tasks": "Tasques",
+  "modules": "Mòduls",
+  "activateModule": "Activar mòdul",
+  "deactivateModule": "Desactivar mòdul",
+  "structuredMode": "Estructurat",
+  "flexibleMode": "Flexible",
+  "minimalMode": "Minimal"
+}

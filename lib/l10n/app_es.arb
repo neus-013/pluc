@@ -1,0 +1,18 @@
+{
+  "@@locale": "es",
+  "appTitle": "Pluc",
+  "loginTitle": "Inicio de sesión",
+  "username": "Usuario",
+  "password": "Contraseña",
+  "signIn": "Iniciar sesión",
+  "signOut": "Cerrar sesión",
+  "calendar": "Calendario",
+  "journal": "Diario",
+  "tasks": "Tareas",
+  "modules": "Módulos",
+  "activateModule": "Activar módulo",
+  "deactivateModule": "Desactivar módulo",
+  "structuredMode": "Estructurado",
+  "flexibleMode": "Flexible",
+  "minimalMode": "Minimal"
+}

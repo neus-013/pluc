@@ -1,0 +1,31 @@
+# Flutter/Dart/Pub related
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+
+# Android related
+**/android/**/gradle-wrapper.jar
+**/android/.gradle/**
+**/android/app/**/gradle-wrapper.jar
+**/android/app/build/
+
+# iOS related
+**/ios/Flutter/**
+**/ios/Pods/**
+**/ios/Runner.xcworkspace/**
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+
+# Visual Studio Code
+.vscode/
+
+# Others
+*.log
+pubspec.lock
+
+# Generated localization
+lib/l10n/*.dart
