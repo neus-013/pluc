@@ -1,0 +1,233 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pluc/l10n/app_localizations.dart';
+import 'package:pluc/presentation/calendar_screen.dart';
+import 'package:pluc/presentation/task_screen.dart';
+import 'package:pluc/presentation/journal_entry_screen.dart';
+import 'package:pluc/presentation/settings_screen.dart';
+import 'providers/app_providers.dart';
+
+class HomeScreen extends ConsumerStatefulWidget {
+  const HomeScreen({Key? key}) : super(key: key);
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  String _currentView = 'calendar';
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context)!;
+    final enabledModules = ref.watch(enabledModulesProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_getTitle(_currentView, strings)),
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    'Pluc',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color:
+                              Theme.of(context).colorScheme.onPrimaryContainer,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    strings.appTitle,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color:
+                              Theme.of(context).colorScheme.onPrimaryContainer,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            // Calendar is always visible (aggregates all modules)
+            ListTile(
+              leading: const Icon(Icons.calendar_today),
+              title: Text(strings.calendar),
+              selected: _currentView == 'calendar',
+              onTap: () {
+                setState(() {
+                  _currentView = 'calendar';
+                });
+                Navigator.pop(context);
+              },
+            ),
+            const Divider(),
+            // Show only enabled modules
+            if (enabledModules['tasks'] == true)
+              ListTile(
+                leading: const Icon(Icons.check_box),
+                title: Text(strings.tasks),
+                selected: _currentView == 'tasks',
+                onTap: () {
+                  setState(() {
+                    _currentView = 'tasks';
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+            if (enabledModules['journal'] == true)
+              ListTile(
+                leading: const Icon(Icons.book),
+                title: Text(strings.journal),
+                selected: _currentView == 'journal',
+                onTap: () {
+                  setState(() {
+                    _currentView = 'journal';
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+            if (enabledModules['habits'] == true)
+              ListTile(
+                leading: const Icon(Icons.repeat),
+                title: const Text('Habits'),
+                selected: _currentView == 'habits',
+                onTap: () {
+                  setState(() {
+                    _currentView = 'habits';
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+            if (enabledModules['health'] == true)
+              ListTile(
+                leading: const Icon(Icons.fitness_center),
+                title: const Text('Health'),
+                selected: _currentView == 'health',
+                onTap: () {
+                  setState(() {
+                    _currentView = 'health';
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+            if (enabledModules['finance'] == true)
+              ListTile(
+                leading: const Icon(Icons.attach_money),
+                title: const Text('Finance'),
+                selected: _currentView == 'finance',
+                onTap: () {
+                  setState(() {
+                    _currentView = 'finance';
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+            if (enabledModules['nutrition'] == true)
+              ListTile(
+                leading: const Icon(Icons.restaurant),
+                title: const Text('Nutrition'),
+                selected: _currentView == 'nutrition',
+                onTap: () {
+                  setState(() {
+                    _currentView = 'nutrition';
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+            if (enabledModules['menstruation'] == true)
+              ListTile(
+                leading: const Icon(Icons.favorite),
+                title: const Text('Menstruation'),
+                selected: _currentView == 'menstruation',
+                onTap: () {
+                  setState(() {
+                    _currentView = 'menstruation';
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: Text(strings.settings),
+              selected: _currentView == 'settings',
+              onTap: () {
+                setState(() {
+                  _currentView = 'settings';
+                });
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+      body: _buildCurrentView(),
+    );
+  }
+
+  Widget _buildCurrentView() {
+    switch (_currentView) {
+      case 'calendar':
+        return const CalendarScreen();
+      case 'tasks':
+        return const TaskScreen();
+      case 'journal':
+        return const JournalEntryScreen();
+      case 'settings':
+        return const SettingsScreen();
+      case 'habits':
+      case 'health':
+      case 'finance':
+      case 'nutrition':
+      case 'menstruation':
+        return _buildPlaceholder(_currentView);
+      default:
+        return const CalendarScreen();
+    }
+  }
+
+  Widget _buildPlaceholder(String moduleName) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.construction,
+            size: 64,
+            color: Theme.of(context).colorScheme.secondary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '$moduleName module',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 8),
+          const Text('Coming soon...'),
+        ],
+      ),
+    );
+  }
+
+  String _getTitle(String view, AppLocalizations strings) {
+    switch (view) {
+      case 'calendar':
+        return strings.calendar;
+      case 'tasks':
+        return strings.tasks;
+      case 'journal':
+        return strings.journal;
+      case 'settings':
+        return strings.settings;
+      default:
+        return view[0].toUpperCase() + view.substring(1);
+    }
+  }
+}

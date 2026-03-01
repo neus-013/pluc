@@ -1,5 +1,3 @@
-import 'package:pluc/core/entities.dart';
-
 /// Repository abstraction for Habits module.
 abstract class HabitRepository {
   Future<List<dynamic>> getAllHabits();

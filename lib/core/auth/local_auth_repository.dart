@@ -2,6 +2,7 @@ import '../database.dart';
 import '../auth_repository.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
+import 'package:drift/drift.dart';
 
 class LocalAuthRepository implements AuthRepository {
   final AppDatabase db;
@@ -19,12 +20,12 @@ class LocalAuthRepository implements AuthRepository {
     final hash = _hashPassword(password);
     try {
       await db.into(db.users).insert(
-        UsersCompanion(
-          id: Value(id),
-          username: Value(username),
-          passwordHash: Value(hash),
-        ),
-      );
+            UsersCompanion(
+              id: Value(id),
+              username: Value(username),
+              passwordHash: Value(hash),
+            ),
+          );
       return true;
     } catch (e) {
       return false;
@@ -34,8 +35,9 @@ class LocalAuthRepository implements AuthRepository {
   @override
   Future<bool> signIn(String username, String password) async {
     final hash = _hashPassword(password);
-    final result = await db.select(db.users)
-        .where((u) => u.username.equals(username) & u.passwordHash.equals(hash))
+    final result = await (db.select(db.users)
+          ..where(
+              (u) => u.username.equals(username) & u.passwordHash.equals(hash)))
         .get();
     return result.isNotEmpty;
   }

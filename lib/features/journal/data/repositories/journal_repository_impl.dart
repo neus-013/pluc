@@ -1,6 +1,8 @@
 import 'package:pluc/core/database.dart';
-import 'package:pluc/features/journal/domain/entities/journal_entry.dart';
+import 'package:pluc/features/journal/domain/entities/journal_entry.dart'
+    as domain;
 import 'package:pluc/features/journal/domain/repositories/journal_repository.dart';
+import 'package:drift/drift.dart';
 
 /// Implementation of JournalRepository using Drift ORM.
 /// Encapsulates database access; domain layer doesn't know about Drift.
@@ -10,7 +12,7 @@ class JournalRepositoryImpl implements JournalRepository {
   JournalRepositoryImpl(this.db);
 
   @override
-  Future<List<JournalEntry>> getAllEntries() async {
+  Future<List<domain.JournalEntry>> getAllEntries() async {
     try {
       final entries = await db.select(db.journalEntries).get();
       return entries.map(_mapToDomain).toList();
@@ -20,7 +22,7 @@ class JournalRepositoryImpl implements JournalRepository {
   }
 
   @override
-  Future<JournalEntry?> getEntryById(String id) async {
+  Future<domain.JournalEntry?> getEntryById(String id) async {
     try {
       final entry = await (db.select(db.journalEntries)
             ..where((t) => t.id.equals(id)))
@@ -32,32 +34,30 @@ class JournalRepositoryImpl implements JournalRepository {
   }
 
   @override
-  Future<void> saveEntry(JournalEntry entry) async {
+  Future<void> saveEntry(domain.JournalEntry entry) async {
     await db.into(db.journalEntries).insertOnConflictUpdate(
-      JournalEntriesCompanion(
-        id: Value(entry.id),
-        userId: Value(entry.userId),
-        date: Value(entry.createdAt),
-        content: Value(entry.content),
-      ),
-    );
+          JournalEntriesCompanion(
+            id: Value(entry.id),
+            userId: Value(entry.userId),
+            date: Value(entry.createdAt),
+            content: Value(entry.content),
+          ),
+        );
   }
 
   @override
   Future<void> deleteEntry(String id) async {
-    await (db.delete(db.journalEntries)
-          ..where((t) => t.id.equals(id)))
-        .go();
+    await (db.delete(db.journalEntries)..where((t) => t.id.equals(id))).go();
   }
 
   @override
-  Future<List<JournalEntry>> getEntriesByDateRange(
+  Future<List<domain.JournalEntry>> getEntriesByDateRange(
     DateTime start,
     DateTime end,
   ) async {
     try {
       final entries = await (db.select(db.journalEntries)
-            ..where((t) => t.date.isBetween(start, end)))
+            ..where((t) => t.date.isBetween(Constant(start), Constant(end))))
           .get();
       return entries.map(_mapToDomain).toList();
     } catch (e) {
@@ -66,8 +66,8 @@ class JournalRepositoryImpl implements JournalRepository {
   }
 
   /// Maps database row to domain entity
-  JournalEntry _mapToDomain(JournalEntriesData row) {
-    return JournalEntry(
+  domain.JournalEntry _mapToDomain(JournalEntry row) {
+    return domain.JournalEntry(
       id: row.id,
       createdAt: row.date,
       updatedAt: row.date,

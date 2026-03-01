@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pluc/core/entities.dart';
 import 'package:pluc/core/services/preset_service.dart';
+import 'package:pluc/core/providers.dart';
 
 // ============================================================================
 // MODULE STATE
@@ -30,26 +31,30 @@ final modulePresetsProvider = StateProvider<Map<String, String>>((ref) {
 });
 
 /// Feature toggles per module
-final featureTogglesProvider = StateProvider<Map<String, List<FeatureToggle>>>((ref) {
+final featureTogglesProvider =
+    StateProvider<Map<String, List<FeatureToggle>>>((ref) {
   return {
     'tasks': [
-      FeatureToggle(id: '1', moduleId: 'tasks', name: 'reminders', enabled: true),
-      FeatureToggle(id: '2', moduleId: 'tasks', name: 'recurring', enabled: true),
-      FeatureToggle(id: '3', moduleId: 'tasks', name: 'scheduling', enabled: true),
-      FeatureToggle(id: '4', moduleId: 'tasks', name: 'notifications', enabled: true),
+      FeatureToggle(
+          id: '1', moduleId: 'tasks', name: 'reminders', enabled: true),
+      FeatureToggle(
+          id: '2', moduleId: 'tasks', name: 'recurring', enabled: true),
+      FeatureToggle(
+          id: '3', moduleId: 'tasks', name: 'scheduling', enabled: true),
+      FeatureToggle(
+          id: '4', moduleId: 'tasks', name: 'notifications', enabled: true),
     ],
     'journal': [
-      FeatureToggle(id: '5', moduleId: 'journal', name: 'attachments', enabled: true),
+      FeatureToggle(
+          id: '5', moduleId: 'journal', name: 'attachments', enabled: true),
       FeatureToggle(id: '6', moduleId: 'journal', name: 'tags', enabled: true),
     ],
   };
 });
 
 /// Apply preset to a module's features
-final applyPresetProvider = FutureProvider.family<
-    List<FeatureToggle>,
-    (String moduleId, String presetName)
->((ref, params) async {
+final applyPresetProvider = FutureProvider.family<List<FeatureToggle>,
+    (String moduleId, String presetName)>((ref, params) async {
   final presetService = ref.read(presetServiceProvider);
   final toggles = ref.read(featureTogglesProvider);
   final currentToggles = toggles[params.$1] ?? [];
@@ -58,7 +63,7 @@ final applyPresetProvider = FutureProvider.family<
   if (preset == null) return currentToggles;
 
   final updated = await presetService.applyPreset(preset, currentToggles);
-  
+
   // Update the state
   ref.read(featureTogglesProvider.notifier).state = {
     ...toggles,
@@ -69,7 +74,8 @@ final applyPresetProvider = FutureProvider.family<
 });
 
 /// Module definitions
-final moduleDefinitionsProvider = Provider<Map<String, ModuleDefinition>>((ref) {
+final moduleDefinitionsProvider =
+    Provider<Map<String, ModuleDefinition>>((ref) {
   return {
     'tasks': ModuleDefinition(
       id: 'tasks',
@@ -118,7 +124,7 @@ final calendarItemsProvider = FutureProvider<List<dynamic>>((ref) async {
 
   try {
     final items = await calendarRepo.getSchedulableItems(start, end);
-    
+
     // Filter by enabled modules
     return items
         .where((item) => enabledModules[item.moduleSource] ?? false)

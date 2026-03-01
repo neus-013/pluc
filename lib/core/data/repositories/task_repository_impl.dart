@@ -1,6 +1,7 @@
 import 'package:pluc/core/database.dart';
-import 'package:pluc/core/domain/entities/task.dart';
+import 'package:pluc/core/domain/entities/task.dart' as domain;
 import 'package:pluc/core/domain/repositories/task_repository.dart';
+import 'package:drift/drift.dart';
 
 /// Implementation of TaskRepository using Drift ORM.
 class TaskRepositoryImpl implements TaskRepository {
@@ -9,7 +10,7 @@ class TaskRepositoryImpl implements TaskRepository {
   TaskRepositoryImpl(this.db);
 
   @override
-  Future<List<Task>> getAllTasks() async {
+  Future<List<domain.Task>> getAllTasks() async {
     try {
       final tasks = await db.select(db.tasks).get();
       return tasks.map(_mapToDomain).toList();
@@ -19,10 +20,9 @@ class TaskRepositoryImpl implements TaskRepository {
   }
 
   @override
-  Future<Task?> getTaskById(String id) async {
+  Future<domain.Task?> getTaskById(String id) async {
     try {
-      final task = await (db.select(db.tasks)
-            ..where((t) => t.id.equals(id)))
+      final task = await (db.select(db.tasks)..where((t) => t.id.equals(id)))
           .getSingleOrNull();
       return task != null ? _mapToDomain(task) : null;
     } catch (e) {
@@ -31,17 +31,17 @@ class TaskRepositoryImpl implements TaskRepository {
   }
 
   @override
-  Future<void> saveTask(Task task) async {
+  Future<void> saveTask(domain.Task task) async {
     await db.into(db.tasks).insertOnConflictUpdate(
-      TasksCompanion(
-        id: Value(task.id),
-        userId: Value(task.userId),
-        title: Value(task.title),
-        description: Value(task.description),
-        dueDate: Value(task.startDate),
-        completed: Value(task.status == 'completed'),
-      ),
-    );
+          TasksCompanion(
+            id: Value(task.id),
+            userId: Value(task.userId),
+            title: Value(task.title),
+            description: Value(task.description),
+            dueDate: Value(task.startDate),
+            completed: Value(task.status == 'completed'),
+          ),
+        );
   }
 
   @override
@@ -50,7 +50,8 @@ class TaskRepositoryImpl implements TaskRepository {
   }
 
   @override
-  Future<List<Task>> getTasksByDateRange(DateTime start, DateTime end) async {
+  Future<List<domain.Task>> getTasksByDateRange(
+      DateTime start, DateTime end) async {
     try {
       final tasks = await (db.select(db.tasks)
             ..where((t) => t.dueDate.isBetweenValues(start, end)))
@@ -61,8 +62,8 @@ class TaskRepositoryImpl implements TaskRepository {
     }
   }
 
-  Task _mapToDomain(TasksData row) {
-    return Task(
+  domain.Task _mapToDomain(Task row) {
+    return domain.Task(
       id: row.id,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),

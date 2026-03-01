@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+// import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers/app_providers.dart';
 
@@ -8,7 +8,7 @@ class ModulesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final strings = AppLocalizations.of(context)!;
+    // final strings = AppLocalizations.of(context)!;
     final enabledModules = ref.watch(enabledModulesProvider);
     final selectedPresets = ref.watch(modulePresetsProvider);
     final modules = ref.watch(moduleDefinitionsProvider);
@@ -25,7 +25,7 @@ class ModulesScreen extends ConsumerWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: Text(strings.modules)),
+      appBar: AppBar(title: const Text('Modules')),
       body: ListView.builder(
         itemCount: moduleList.length,
         itemBuilder: (context, index) {
@@ -80,17 +80,15 @@ class ModulesScreen extends ConsumerWidget {
                               .toList(),
                           onChanged: (newPreset) async {
                             if (newPreset != null) {
-                              ref
-                                  .read(modulePresetsProvider.notifier)
-                                  .state = {
+                              ref.read(modulePresetsProvider.notifier).state = {
                                 ...selectedPresets,
                                 moduleId: newPreset,
                               };
-                              
+
                               // Apply preset
-                              await ref
-                                  .read(applyPresetProvider(
-                                      (moduleId, newPreset)).future);
+                              await ref.read(
+                                  applyPresetProvider((moduleId, newPreset))
+                                      .future);
                             }
                           },
                         ),
@@ -144,4 +142,3 @@ class ModulesScreen extends ConsumerWidget {
 
   String _capitalize(String s) => s[0].toUpperCase() + s.substring(1);
 }
-

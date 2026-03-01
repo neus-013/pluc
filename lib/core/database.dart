@@ -51,7 +51,7 @@ class EntityRelations extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-class Tasks extends Table with TableInfoMixin {
+class Tasks extends Table {
   TextColumn get id => text()();
   TextColumn get userId => text()();
   TextColumn get title => text()();
@@ -76,7 +76,8 @@ class Habits extends Table {
   TextColumn get id => text()();
   TextColumn get userId => text()();
   TextColumn get name => text()();
-  BoolColumn get completedToday => boolean().withDefault(const Constant(false))();
+  BoolColumn get completedToday =>
+      boolean().withDefault(const Constant(false))();
   @override
   Set<Column> get primaryKey => {id};
 }

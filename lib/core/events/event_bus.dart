@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'app_events.dart';
 
-typedef EventListener<T extends AppEvent> = void Function(T event);
+typedef EventListener<T extends AppEvent> = FutureOr<void> Function(T event);
 
 /// Strongly typed, broadcast-safe event bus.
 /// Not a static singleton - instantiated per context via dependency injection.
@@ -12,7 +13,7 @@ class EventBus {
   /// Returns an unsubscribe function for cleanup.
   void Function() on<T extends AppEvent>(EventListener<T> callback) {
     _listeners.putIfAbsent(T, () => []).add(callback);
-    
+
     // Return unsubscribe function
     return () => off<T>(callback);
   }
@@ -49,7 +50,7 @@ class EventBus {
     if (listeners == null || listeners.isEmpty) return;
 
     await Future.wait(
-      List<Function>.from(listeners).map((listener) async {
+      List<Function>.from(listeners).map<Future<void>>((listener) async {
         try {
           await (listener as EventListener<T>)(event);
         } catch (e) {
