@@ -36,6 +36,7 @@ class _TaskScreenState extends ConsumerState<TaskScreen> {
     final selectedPreset = modulePresets['tasks'] ?? 'flexible';
     final featureToggles = ref.watch(featureTogglesProvider);
     final taskToggles = featureToggles['tasks'] ?? [];
+    final theme = ref.watch(currentThemeProvider);
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -116,103 +117,62 @@ class _TaskScreenState extends ConsumerState<TaskScreen> {
                           itemCount: tasks.length,
                           itemBuilder: (context, index) {
                             final task = tasks[index];
-                            return ListTile(
-                              leading: Icon(
-                                task.status == 'completed'
-                                    ? Icons.check_circle
-                                    : Icons.radio_button_unchecked,
-                                color: task.status == 'completed'
-                                    ? Colors.green
-                                    : Colors.grey,
-                              ),
-                              title: Text(
-                                task.title,
-                                style: TextStyle(
-                                  decoration: task.status == 'completed'
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                ),
-                              ),
-                              subtitle: task.description != null
-                                  ? Text(
-                                      task.description!,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    )
-                                  : (task.startDate != null
-                                      ? Text(
-                                          '📅 ${task.startDate!.toString().split(' ')[0]}',
-                                        )
-                                      : null),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (task.startDate != null &&
-                                      task.description != null)
-                                    Text(
-                                      task.startDate!.toString().split(' ')[0],
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey,
+                            // Delegate task rendering to theme configuration
+                            // This allows different themes to present tasks differently
+                            // (e.g., cards vs lists, compact vs detailed)
+                            return theme.buildTaskCard(
+                              task,
+                              onDelete: () async {
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: Text('Delete Task'),
+                                    content: Text(
+                                        'Are you sure you want to delete "${task.title}"?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: Text('Cancel'),
                                       ),
-                                    ),
-                                  IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () async {
-                                      final confirmed = await showDialog<bool>(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: Text('Delete Task'),
-                                          content: Text(
-                                              'Are you sure you want to delete "${task.title}"?'),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context, false),
-                                              child: Text('Cancel'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context, true),
-                                              child: Text('Delete',
-                                                  style: TextStyle(
-                                                      color: Colors.red)),
-                                            ),
-                                          ],
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        child: Text('Delete',
+                                            style:
+                                                TextStyle(color: Colors.red)),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (confirmed == true) {
+                                  try {
+                                    await taskRepo.deleteTask(task.id, userId);
+                                    _refreshTasks();
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text('Task deleted'),
+                                          backgroundColor: Colors.green,
                                         ),
                                       );
-
-                                      if (confirmed == true) {
-                                        try {
-                                          await taskRepo.deleteTask(
-                                              task.id, userId);
-                                          _refreshTasks();
-                                          if (mounted) {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              SnackBar(
-                                                content: Text('Task deleted'),
-                                                backgroundColor: Colors.green,
-                                              ),
-                                            );
-                                          }
-                                        } catch (e) {
-                                          if (mounted) {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                    'Error deleting task: $e'),
-                                                backgroundColor: Colors.red,
-                                              ),
-                                            );
-                                          }
-                                        }
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content:
+                                              Text('Error deleting task: $e'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                }
+                              },
                             );
                           },
                         );

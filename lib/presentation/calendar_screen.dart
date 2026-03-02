@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pluc/l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pluc/core/entities.dart';
 import 'providers/app_providers.dart';
 
 class CalendarScreen extends ConsumerWidget {
@@ -11,11 +12,11 @@ class CalendarScreen extends ConsumerWidget {
     final strings = AppLocalizations.of(context)!;
     final (start, end) = ref.watch(selectedDateRangeProvider);
     final calendarItems = ref.watch(calendarItemsProvider);
-    final dummyTasks = ref.watch(dummyTasksProvider);
-    final dummyEntries = ref.watch(dummyJournalEntriesProvider);
+    final theme = ref.watch(currentThemeProvider);
 
     return Column(
       children: [
+        // Date navigation controls
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
@@ -46,88 +47,21 @@ class CalendarScreen extends ConsumerWidget {
             ],
           ),
         ),
+        // Calendar view delegated to theme configuration
+        // This allows themes to control calendar presentation:
+        // - Grid calendar vs timeline vs list view
+        // - Visual density and spacing
+        // - Item display format
         Expanded(
           child: calendarItems.when(
             data: (items) {
-              // Mix real items with dummy data for MVP
-              final allItems = [
-                ...dummyTasks.where((t) {
-                  final date = t['dueDate'] as DateTime;
-                  return date.isAfter(start) && date.isBefore(end);
-                }),
-                ...dummyEntries.where((e) {
-                  final date = e['date'] as DateTime;
-                  return date.isAfter(start) && date.isBefore(end);
-                }),
-                ...items,
-              ];
-
-              if (allItems.isEmpty) {
-                return Center(
-                  child: Text(strings.noEventsThisWeek),
-                );
-              }
-
-              return ListView.builder(
-                itemCount: allItems.length,
-                itemBuilder: (context, index) {
-                  final item = allItems[index];
-
-                  if (item is Map<String, dynamic>) {
-                    final isTask = item.containsKey('completed');
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      child: ListTile(
-                        leading: Icon(
-                          isTask ? Icons.check_circle : Icons.edit_note,
-                          color: isTask
-                              ? (item['completed'] ?? false
-                                  ? Colors.green
-                                  : Colors.orange)
-                              : Colors.blue,
-                        ),
-                        title: Text(
-                          isTask
-                              ? item['title']
-                              : 'Journal: ${item['content']?.substring(0, 30)}...',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          isTask
-                              ? 'Due: ${item['dueDate']}'
-                              : 'Date: ${item['date']}',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(isTask
-                                  ? 'Task: ${item['title']}'
-                                  : 'Entry details'),
-                            ),
-                          );
-                        },
-                      ),
-                    );
-                  }
-
-                  // Handle SchedulableItem from repository
-                  return Card(
-                    margin:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: ListTile(
-                      leading: const Icon(Icons.event),
-                      title: Text('${item.title} (${item.moduleSource})'),
-                      subtitle: Text(
-                        item.startDate?.toString() ?? 'No date',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  );
-                },
-              );
+              // Filter to only SchedulableEntity items
+              final schedulableItems = items
+                  .whereType<SchedulableEntity>()
+                  .toList();
+              
+              // Delegate rendering to theme
+              return theme.buildCalendarView(schedulableItems);
             },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, stack) => Center(

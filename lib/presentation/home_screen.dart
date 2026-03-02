@@ -21,6 +21,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context)!;
     final enabledModules = ref.watch(enabledModulesProvider);
+    final theme = ref.watch(currentThemeProvider);
 
     return Scaffold(
       key: const Key('home_scaffold'),
@@ -181,7 +182,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
       ),
-      body: _buildCurrentView(),
+      // Wrap body content with theme's layout builder
+      // This allows themes to control the overall structure and decoration
+      body: theme.buildHomeLayout(
+        child: _buildCurrentView(),
+      ),
     );
   }
 

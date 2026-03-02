@@ -32,6 +32,7 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
     final userId = ref.read(currentUserIdProvider);
     final modulePresets = ref.watch(modulePresetsProvider);
     final selectedPreset = modulePresets['journal'] ?? 'flexible';
+    final theme = ref.watch(currentThemeProvider);
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -116,102 +117,63 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                           itemCount: entries.length,
                           itemBuilder: (context, index) {
                             final entry = entries[index];
-                            return Card(
-                              margin: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: Colors.blue.shade100,
-                                  child: Icon(
-                                    Icons.article,
-                                    color: Colors.blue.shade700,
-                                  ),
-                                ),
-                                title: Text(
-                                  entry.content,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                subtitle: entry.startDate != null
-                                    ? Text(
-                                        '📅 ${_formatDate(entry.startDate!)}',
-                                        style: TextStyle(fontSize: 12),
-                                      )
-                                    : null,
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (entry.startDate != null)
-                                      Text(
-                                        _formatTime(entry.startDate!),
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey,
-                                        ),
+                            // Delegate journal entry rendering to theme configuration
+                            // This allows different themes to present entries differently
+                            // (e.g., diary style vs note cards, compact vs expanded)
+                            return theme.buildJournalCard(
+                              entry,
+                              onDelete: () async {
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: Text('Delete Entry'),
+                                    content: Text(
+                                        'Are you sure you want to delete this journal entry?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: Text('Cancel'),
                                       ),
-                                    IconButton(
-                                      icon:
-                                          Icon(Icons.delete, color: Colors.red),
-                                      onPressed: () async {
-                                        final confirmed =
-                                            await showDialog<bool>(
-                                          context: context,
-                                          builder: (context) => AlertDialog(
-                                            title: Text('Delete Entry'),
-                                            content: Text(
-                                                'Are you sure you want to delete this journal entry?'),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                    context, false),
-                                                child: Text('Cancel'),
-                                              ),
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                    context, true),
-                                                child: Text('Delete',
-                                                    style: TextStyle(
-                                                        color: Colors.red)),
-                                              ),
-                                            ],
-                                          ),
-                                        );
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        child: Text('Delete',
+                                            style:
+                                                TextStyle(color: Colors.red)),
+                                      ),
+                                    ],
+                                  ),
+                                );
 
-                                        if (confirmed == true) {
-                                          try {
-                                            await journalRepo.deleteEntry(
-                                                entry.id, userId);
-                                            _refreshEntries();
-                                            if (mounted) {
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                SnackBar(
-                                                  content:
-                                                      Text('Entry deleted'),
-                                                  backgroundColor: Colors.green,
-                                                ),
-                                              );
-                                            }
-                                          } catch (e) {
-                                            if (mounted) {
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                SnackBar(
-                                                  content: Text(
-                                                      'Error deleting entry: $e'),
-                                                  backgroundColor: Colors.red,
-                                                ),
-                                              );
-                                            }
-                                          }
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
+                                if (confirmed == true) {
+                                  try {
+                                    await journalRepo.deleteEntry(
+                                        entry.id, userId);
+                                    _refreshEntries();
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text('Entry deleted'),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              'Error deleting entry: $e'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                }
+                              },
                             );
                           },
                         );
@@ -386,14 +348,6 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
   }
 
   String _capitalize(String s) => s[0].toUpperCase() + s.substring(1);
-
-  String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
-  String _formatTime(DateTime date) {
-    return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-  }
 
   @override
   void dispose() {

@@ -4,6 +4,24 @@ import 'package:pluc/core/entities.dart';
 import 'package:pluc/core/domain/entities/user.dart';
 import 'package:pluc/core/services/preset_service.dart';
 import 'package:pluc/core/providers.dart';
+import 'package:pluc/presentation/theme/app_theme_config.dart';
+
+// ============================================================================
+// THEME CONFIGURATION
+// ============================================================================
+
+/// Controls the entire UI structure and visual presentation.
+/// 
+/// This provider allows switching between different theme implementations
+/// that control not just colors/fonts, but the actual widget structure,
+/// layout patterns, and visual hierarchy throughout the app.
+/// 
+/// Example: Change from DefaultThemeConfig to a hypothetical CompactTheme
+/// to instantly restructure all screens with denser layouts and different
+/// card styles without modifying individual screen code.
+final currentThemeProvider = StateProvider<AppThemeConfig>((ref) {
+  return DefaultThemeConfig(); // Default theme
+});
 
 // ============================================================================
 // USER STATE
