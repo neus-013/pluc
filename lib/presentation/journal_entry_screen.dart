@@ -140,15 +140,74 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                                         style: TextStyle(fontSize: 12),
                                       )
                                     : null,
-                                trailing: entry.startDate != null
-                                    ? Text(
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (entry.startDate != null)
+                                      Text(
                                         _formatTime(entry.startDate!),
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: Colors.grey,
                                         ),
-                                      )
-                                    : null,
+                                      ),
+                                    IconButton(
+                                      icon: Icon(Icons.delete, color: Colors.red),
+                                      onPressed: () async {
+                                        final confirmed = await showDialog<bool>(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: Text('Delete Entry'),
+                                            content: Text(
+                                                'Are you sure you want to delete this journal entry?'),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(context, false),
+                                                child: Text('Cancel'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(context, true),
+                                                child: Text('Delete',
+                                                    style: TextStyle(
+                                                        color: Colors.red)),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+
+                                        if (confirmed == true) {
+                                          try {
+                                            await journalRepo.deleteEntry(
+                                                entry.id, userId);
+                                            _refreshEntries();
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Text('Entry deleted'),
+                                                  backgroundColor: Colors.green,
+                                                ),
+                                              );
+                                            }
+                                          } catch (e) {
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                      'Error deleting entry: $e'),
+                                                  backgroundColor: Colors.red,
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           },

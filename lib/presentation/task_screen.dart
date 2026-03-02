@@ -144,16 +144,76 @@ class _TaskScreenState extends ConsumerState<TaskScreen> {
                                           '📅 ${task.startDate!.toString().split(' ')[0]}',
                                         )
                                       : null),
-                              trailing: task.startDate != null &&
-                                      task.description != null
-                                  ? Text(
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (task.startDate != null &&
+                                      task.description != null)
+                                    Text(
                                       task.startDate!.toString().split(' ')[0],
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: Colors.grey,
                                       ),
-                                    )
-                                  : null,
+                                    ),
+                                  IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () async {
+                                      final confirmed = await showDialog<bool>(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: Text('Delete Task'),
+                                          content: Text(
+                                              'Are you sure you want to delete "${task.title}"?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, false),
+                                              child: Text('Cancel'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, true),
+                                              child: Text('Delete',
+                                                  style: TextStyle(
+                                                      color: Colors.red)),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+
+                                      if (confirmed == true) {
+                                        try {
+                                          await taskRepo.deleteTask(
+                                              task.id, userId);
+                                          _refreshTasks();
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content:
+                                                    Text('Task deleted'),
+                                                backgroundColor: Colors.green,
+                                              ),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                    'Error deleting task: $e'),
+                                                backgroundColor: Colors.red,
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
                             );
                           },
                         );

@@ -215,15 +215,6 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'pluc.sqlite'));
-
-    // TEMPORARY: Delete old database to force recreation with new schema
-    // This ensures clean migration from userId to ownerId
-    // TODO: Remove this after production deployment and proper migration
-    if (await file.exists()) {
-      await file.delete();
-      print('Deleted old database file for clean schema v2 recreation');
-    }
-
     return NativeDatabase(file);
   });
 }

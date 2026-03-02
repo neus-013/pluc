@@ -164,37 +164,9 @@ final currentUserIdProvider = Provider<String>((ref) {
 });
 
 final dummyTasksProvider = StateProvider<List<dynamic>>((ref) {
-  return [
-    {
-      'id': 'task_1',
-      'title': 'Complete Flutter MVP',
-      'userId': 'user_default',
-      'dueDate': DateTime.now().add(Duration(days: 3)),
-      'completed': false,
-    },
-    {
-      'id': 'task_2',
-      'title': 'Review architecture',
-      'userId': 'user_default',
-      'dueDate': DateTime.now().add(Duration(days: 1)),
-      'completed': true,
-    },
-  ];
+  return [];
 });
 
 final dummyJournalEntriesProvider = StateProvider<List<dynamic>>((ref) {
-  return [
-    {
-      'id': 'entry_1',
-      'content': 'Great day today! Finished the event system refactoring.',
-      'userId': 'user_default',
-      'date': DateTime.now().subtract(Duration(days: 1)),
-    },
-    {
-      'id': 'entry_2',
-      'content': 'Reflection: Architecture decisions are paying off.',
-      'userId': 'user_default',
-      'date': DateTime.now().subtract(Duration(days: 2)),
-    },
-  ];
+  return [];
 });
