@@ -6,12 +6,40 @@ import 'providers/app_providers.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({Key? key}) : super(key: key);
 
+  String _getModuleName(String moduleId, AppLocalizations strings) {
+    switch (moduleId) {
+      case 'tasks':
+        return strings.tasks;
+      case 'journal':
+        return strings.journal;
+      case 'calendar':
+        return strings.calendar;
+      case 'habits':
+        return strings.habits;
+      case 'health':
+        return strings.health;
+      case 'finance':
+        return strings.finance;
+      case 'nutrition':
+        return strings.nutrition;
+      case 'menstruation':
+        return strings.menstruation;
+      default:
+        return moduleId[0].toUpperCase() + moduleId.substring(1);
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = AppLocalizations.of(context)!;
     final enabledModules = ref.watch(enabledModulesProvider);
     final selectedPresets = ref.watch(modulePresetsProvider);
-    final modules = ref.watch(moduleDefinitionsProvider);
+    final currentUser = ref.watch(currentUserProvider);
+    final passwordLength = ref.watch(passwordLengthProvider);
+    final currentLocale = ref.watch(localeProvider);
+
+    // Extract username from User entity
+    final username = currentUser?.username ?? 'User';
 
     final moduleList = [
       'tasks',
@@ -24,7 +52,6 @@ class SettingsScreen extends ConsumerWidget {
       'menstruation',
     ];
 
-    final currentLocale = Localizations.localeOf(context);
     final languages = {
       'en': 'English',
       'es': 'Español',
@@ -39,11 +66,12 @@ class SettingsScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Text(
-              'Profile',
+              strings.profile,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
           ),
           Card(
+            key: const Key('profile_card'),
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -51,19 +79,31 @@ class SettingsScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Username:',
+                    '${strings.username}:',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.grey[600],
                         ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'User',
+                    username,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    'Language:',
+                    '${strings.password}:',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '•' * passwordLength,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    '${strings.language}:',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.grey[600],
                         ),
@@ -80,11 +120,56 @@ class SettingsScreen extends ConsumerWidget {
                         .toList(),
                     selected: {currentLocale.languageCode},
                     onSelectionChanged: (Set<String> selection) {
-                      final locale = selection.first;
-                      // TODO: Implement language switching with provider
+                      final newLocale = Locale(selection.first);
+                      ref.read(localeProvider.notifier).state = newLocale;
                     },
                   ),
                 ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Logout Button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: ElevatedButton.icon(
+              key: const Key('logout_button'),
+              onPressed: () async {
+                final shouldLogout = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text(strings.logout),
+                    content: Text(strings.logoutConfirm),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: Text(strings.cancel),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: Text(strings.logout),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (shouldLogout == true && context.mounted) {
+                  // Clear user session (set to null)
+                  ref.read(currentUserProvider.notifier).state = null;
+                  ref.read(passwordLengthProvider.notifier).state = 0;
+                  // Navigate back to login
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    '/',
+                    (route) => false,
+                  );
+                }
+              },
+              icon: const Icon(Icons.logout),
+              label: Text(strings.logout),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade400,
+                foregroundColor: Colors.white,
               ),
             ),
           ),
@@ -99,14 +184,16 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           ...moduleList.map((moduleId) {
-            final module = modules[moduleId];
             final isEnabled = enabledModules[moduleId] ?? false;
             final selectedPreset = selectedPresets[moduleId] ?? 'flexible';
 
             return Card(
+              key: Key('module_card_$moduleId'),
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: ExpansionTile(
+                key: Key('expansion_tile_$moduleId'),
                 leading: Switch(
+                  key: Key('switch_$moduleId'),
                   value: isEnabled,
                   onChanged: (val) {
                     ref.read(enabledModulesProvider.notifier).state = {
@@ -115,7 +202,7 @@ class SettingsScreen extends ConsumerWidget {
                     };
                   },
                 ),
-                title: Text(module?.name ?? moduleId),
+                title: Text(_getModuleName(moduleId, strings)),
                 children: [
                   if (isEnabled) ...[
                     Padding(
@@ -124,23 +211,23 @@ class SettingsScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Preset Mode:',
+                            '${strings.presetMode}:',
                             style: Theme.of(context).textTheme.titleSmall,
                           ),
                           const SizedBox(height: 8),
                           SegmentedButton<String>(
-                            segments: const [
+                            segments: [
                               ButtonSegment(
                                 value: 'structured',
-                                label: Text('Structured'),
+                                label: Text(strings.structuredMode),
                               ),
                               ButtonSegment(
                                 value: 'flexible',
-                                label: Text('Flexible'),
+                                label: Text(strings.flexibleMode),
                               ),
                               ButtonSegment(
                                 value: 'minimal',
-                                label: Text('Minimal'),
+                                label: Text(strings.minimalMode),
                               ),
                             ],
                             selected: {selectedPreset},

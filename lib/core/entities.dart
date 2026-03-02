@@ -20,7 +20,7 @@ abstract class BaseEntity {
   final String id;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final String userId;
+  final String ownerId; // User ID who owns this entity
   final String moduleSource;
   final Visibility visibility;
 
@@ -28,7 +28,7 @@ abstract class BaseEntity {
     required this.id,
     required this.createdAt,
     required this.updatedAt,
-    required this.userId,
+    required this.ownerId,
     required this.moduleSource,
     this.visibility = Visibility.normal,
   });
@@ -38,7 +38,7 @@ abstract class BaseEntity {
     String? id,
     DateTime? createdAt,
     DateTime? updatedAt,
-    String? userId,
+    String? ownerId,
     String? moduleSource,
     Visibility? visibility,
   });
@@ -96,7 +96,6 @@ class EntityRelation {
     );
   }
 }
-
 
 /// Immutable definition of a feature module (Calendar, Journal, Habits, etc.)
 class ModuleDefinition {
@@ -189,4 +188,3 @@ class PresetDefinition {
     );
   }
 }
-

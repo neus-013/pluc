@@ -24,15 +24,18 @@ class SchedulableItem {
 
 /// Repository abstraction for the Calendar aggregator.
 /// Delegates to other module repositories without knowing their internals.
+/// All methods are scoped to a specific user (ownerId) for data isolation.
 abstract class CalendarRepository {
-  /// Get all schedulable items for a date range
+  /// Get all schedulable items for a date range for a specific user
   Future<List<SchedulableItem>> getSchedulableItems(
+    String ownerId,
     DateTime start,
     DateTime end,
   );
 
-  /// Get items by module
+  /// Get items by module for a specific user
   Future<List<SchedulableItem>> getItemsByModule(
+    String ownerId,
     String moduleName,
     DateTime start,
     DateTime end,

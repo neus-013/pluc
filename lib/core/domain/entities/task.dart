@@ -27,7 +27,7 @@ class Task extends BaseEntity implements SchedulableEntity {
     required String id,
     required DateTime createdAt,
     required DateTime updatedAt,
-    required String userId,
+    required String ownerId,
     required String moduleSource,
     required this.title,
     this.description,
@@ -39,20 +39,20 @@ class Task extends BaseEntity implements SchedulableEntity {
     this.status = 'pending',
     this.linkedEntityId,
   }) : super(
-    id: id,
-    createdAt: createdAt,
-    updatedAt: updatedAt,
-    userId: userId,
-    moduleSource: moduleSource,
-    visibility: visibility,
-  );
+          id: id,
+          createdAt: createdAt,
+          updatedAt: updatedAt,
+          ownerId: ownerId,
+          moduleSource: moduleSource,
+          visibility: visibility,
+        );
 
   @override
   Task copyWith({
     String? id,
     DateTime? createdAt,
     DateTime? updatedAt,
-    String? userId,
+    String? ownerId,
     String? moduleSource,
     Visibility? visibility,
     String? title,
@@ -68,7 +68,7 @@ class Task extends BaseEntity implements SchedulableEntity {
       id: id ?? this.id,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      userId: userId ?? this.userId,
+      ownerId: ownerId ?? this.ownerId,
       moduleSource: moduleSource ?? this.moduleSource,
       visibility: visibility ?? this.visibility,
       title: title ?? this.title,

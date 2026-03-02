@@ -5,6 +5,7 @@ import 'package:pluc/features/calendar/domain/repositories/calendar_repository.d
 
 /// Implementation of CalendarRepository that aggregates from other module repositories.
 /// Never accesses the database directly; uses abstractions.
+/// All queries are filtered by ownerId for multi-user data isolation.
 class CalendarRepositoryImpl implements CalendarRepository {
   final TaskRepository taskRepository;
   final JournalRepository journalRepository;
@@ -16,37 +17,39 @@ class CalendarRepositoryImpl implements CalendarRepository {
 
   @override
   Future<List<SchedulableItem>> getSchedulableItems(
+    String ownerId,
     DateTime start,
     DateTime end,
   ) async {
     final items = <SchedulableItem>[];
 
     // Aggregate tasks
-    final tasks = await taskRepository.getTasksByDateRange(start, end);
+    final tasks = await taskRepository.getTasksByDateRange(ownerId, start, end);
     items.addAll(
       tasks.map((task) => SchedulableItem(
-        id: task.id,
-        title: task.title,
-        moduleSource: 'tasks',
-        startDate: task.startDate,
-        endDate: task.endDate,
-        entityType: EntityType.task,
-        metadata: {'description': task.description, 'status': task.status},
-      )),
+            id: task.id,
+            title: task.title,
+            moduleSource: 'tasks',
+            startDate: task.startDate,
+            endDate: task.endDate,
+            entityType: EntityType.task,
+            metadata: {'description': task.description, 'status': task.status},
+          )),
     );
 
     // Aggregate journal entries
-    final entries = await journalRepository.getEntriesByDateRange(start, end);
+    final entries =
+        await journalRepository.getEntriesByDateRange(ownerId, start, end);
     items.addAll(
       entries.map((entry) => SchedulableItem(
-        id: entry.id,
-        title: 'Journal Entry',
-        moduleSource: 'journal',
-        startDate: entry.startDate,
-        endDate: entry.endDate,
-        entityType: EntityType.journalEntry,
-        metadata: {'content': entry.content, 'status': entry.status},
-      )),
+            id: entry.id,
+            title: 'Journal Entry',
+            moduleSource: 'journal',
+            startDate: entry.startDate,
+            endDate: entry.endDate,
+            entityType: EntityType.journalEntry,
+            metadata: {'content': entry.content, 'status': entry.status},
+          )),
     );
 
     // Sort by date
@@ -62,35 +65,41 @@ class CalendarRepositoryImpl implements CalendarRepository {
 
   @override
   Future<List<SchedulableItem>> getItemsByModule(
+    String ownerId,
     String moduleName,
     DateTime start,
     DateTime end,
   ) async {
     if (moduleName == 'tasks') {
-      final tasks = await taskRepository.getTasksByDateRange(start, end);
+      final tasks =
+          await taskRepository.getTasksByDateRange(ownerId, start, end);
       return tasks
           .map((task) => SchedulableItem(
-            id: task.id,
-            title: task.title,
-            moduleSource: 'tasks',
-            startDate: task.startDate,
-            endDate: task.endDate,
-            entityType: EntityType.task,
-            metadata: {'description': task.description, 'status': task.status},
-          ))
+                id: task.id,
+                title: task.title,
+                moduleSource: 'tasks',
+                startDate: task.startDate,
+                endDate: task.endDate,
+                entityType: EntityType.task,
+                metadata: {
+                  'description': task.description,
+                  'status': task.status
+                },
+              ))
           .toList();
     } else if (moduleName == 'journal') {
-      final entries = await journalRepository.getEntriesByDateRange(start, end);
+      final entries =
+          await journalRepository.getEntriesByDateRange(ownerId, start, end);
       return entries
           .map((entry) => SchedulableItem(
-            id: entry.id,
-            title: 'Journal Entry',
-            moduleSource: 'journal',
-            startDate: entry.startDate,
-            endDate: entry.endDate,
-            entityType: EntityType.journalEntry,
-            metadata: {'content': entry.content, 'status': entry.status},
-          ))
+                id: entry.id,
+                title: 'Journal Entry',
+                moduleSource: 'journal',
+                startDate: entry.startDate,
+                endDate: entry.endDate,
+                entityType: EntityType.journalEntry,
+                metadata: {'content': entry.content, 'status': entry.status},
+              ))
           .toList();
     }
 

@@ -5,54 +5,40 @@ import 'presentation/home_screen.dart';
 import 'presentation/settings_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/providers.dart';
+import 'presentation/providers/app_providers.dart';
 
 void main() {
-  runApp(const PlucApp());
+  runApp(const ProviderScope(child: PlucApp()));
 }
 
-class PlucApp extends StatefulWidget {
+class PlucApp extends ConsumerWidget {
   const PlucApp({Key? key}) : super(key: key);
 
   @override
-  State<PlucApp> createState() => _PlucAppState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
 
-class _PlucAppState extends State<PlucApp> {
-  Locale _locale = const Locale('en');
-
-  void setLocale(Locale locale) {
-    setState(() {
-      _locale = locale;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ProviderScope(
-      child: MaterialApp(
-        title: 'Pluc',
-        locale: _locale,
-        supportedLocales: AppLocalizations.supportedLocales,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        home: LoginScreen(onLocaleChanged: setLocale),
-        routes: {
-          '/home': (_) => const HomeScreen(),
-          '/settings': (_) => const SettingsScreen(),
-        },
-      ),
+    return MaterialApp(
+      title: 'Pluc',
+      locale: locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: const LoginScreen(),
+      routes: {
+        '/home': (_) => const HomeScreen(),
+        '/settings': (_) => const SettingsScreen(),
+      },
     );
   }
 }
 
 class LoginScreen extends ConsumerStatefulWidget {
-  final void Function(Locale) onLocaleChanged;
-  const LoginScreen({Key? key, required this.onLocaleChanged})
-      : super(key: key);
+  const LoginScreen({Key? key}) : super(key: key);
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -113,7 +99,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                         if (_isSignUpMode) {
                           // Sign up mode
-                          final success = await auth.register(
+                          final user = await auth.registerLocal(
                             _usernameController.text,
                             _passwordController.text,
                           );
@@ -122,7 +108,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             _loading = false;
                           });
 
-                          if (success) {
+                          if (user != null) {
                             setState(() {
                               _successMessage = strings.registrationSuccess;
                               _isSignUpMode = false;
@@ -136,7 +122,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           }
                         } else {
                           // Sign in mode
-                          final success = await auth.signIn(
+                          final user = await auth.signInLocal(
                             _usernameController.text,
                             _passwordController.text,
                           );
@@ -145,7 +131,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             _loading = false;
                           });
 
-                          if (success) {
+                          if (user != null) {
+                            // Store the user entity in provider
+                            ref.read(currentUserProvider.notifier).state = user;
+                            // Store the password length for UI display
+                            ref.read(passwordLengthProvider.notifier).state =
+                                _passwordController.text.length;
                             Navigator.pushReplacementNamed(context, '/home');
                           } else {
                             setState(() {
@@ -180,9 +171,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const Icon(Icons.language, size: 20),
                   const SizedBox(width: 8),
                   DropdownButton<Locale>(
-                    value: Localizations.localeOf(context),
+                    value: ref.watch(localeProvider),
                     onChanged: (locale) {
-                      if (locale != null) widget.onLocaleChanged(locale);
+                      if (locale != null) {
+                        ref.read(localeProvider.notifier).state = locale;
+                      }
                     },
                     items: AppLocalizations.supportedLocales
                         .map((loc) => DropdownMenuItem(

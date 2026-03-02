@@ -28,8 +28,23 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
   late final GeneratedColumn<String> passwordHash = GeneratedColumn<String>(
       'password_hash', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _authProviderMeta =
+      const VerificationMeta('authProvider');
   @override
-  List<GeneratedColumn> get $columns => [id, username, passwordHash];
+  late final GeneratedColumn<String> authProvider = GeneratedColumn<String>(
+      'auth_provider', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('local'));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, username, passwordHash, authProvider, createdAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -59,6 +74,18 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
     } else if (isInserting) {
       context.missing(_passwordHashMeta);
     }
+    if (data.containsKey('auth_provider')) {
+      context.handle(
+          _authProviderMeta,
+          authProvider.isAcceptableOrUnknown(
+              data['auth_provider']!, _authProviderMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
     return context;
   }
 
@@ -74,6 +101,10 @@ class $UsersTable extends Users with TableInfo<$UsersTable, User> {
           .read(DriftSqlType.string, data['${effectivePrefix}username'])!,
       passwordHash: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}password_hash'])!,
+      authProvider: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}auth_provider'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
     );
   }
 
@@ -87,14 +118,22 @@ class User extends DataClass implements Insertable<User> {
   final String id;
   final String username;
   final String passwordHash;
+  final String authProvider;
+  final DateTime createdAt;
   const User(
-      {required this.id, required this.username, required this.passwordHash});
+      {required this.id,
+      required this.username,
+      required this.passwordHash,
+      required this.authProvider,
+      required this.createdAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['username'] = Variable<String>(username);
     map['password_hash'] = Variable<String>(passwordHash);
+    map['auth_provider'] = Variable<String>(authProvider);
+    map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
 
@@ -103,6 +142,8 @@ class User extends DataClass implements Insertable<User> {
       id: Value(id),
       username: Value(username),
       passwordHash: Value(passwordHash),
+      authProvider: Value(authProvider),
+      createdAt: Value(createdAt),
     );
   }
 
@@ -113,6 +154,8 @@ class User extends DataClass implements Insertable<User> {
       id: serializer.fromJson<String>(json['id']),
       username: serializer.fromJson<String>(json['username']),
       passwordHash: serializer.fromJson<String>(json['passwordHash']),
+      authProvider: serializer.fromJson<String>(json['authProvider']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
   @override
@@ -122,13 +165,23 @@ class User extends DataClass implements Insertable<User> {
       'id': serializer.toJson<String>(id),
       'username': serializer.toJson<String>(username),
       'passwordHash': serializer.toJson<String>(passwordHash),
+      'authProvider': serializer.toJson<String>(authProvider),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
 
-  User copyWith({String? id, String? username, String? passwordHash}) => User(
+  User copyWith(
+          {String? id,
+          String? username,
+          String? passwordHash,
+          String? authProvider,
+          DateTime? createdAt}) =>
+      User(
         id: id ?? this.id,
         username: username ?? this.username,
         passwordHash: passwordHash ?? this.passwordHash,
+        authProvider: authProvider ?? this.authProvider,
+        createdAt: createdAt ?? this.createdAt,
       );
   User copyWithCompanion(UsersCompanion data) {
     return User(
@@ -137,6 +190,10 @@ class User extends DataClass implements Insertable<User> {
       passwordHash: data.passwordHash.present
           ? data.passwordHash.value
           : this.passwordHash,
+      authProvider: data.authProvider.present
+          ? data.authProvider.value
+          : this.authProvider,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
 
@@ -145,51 +202,67 @@ class User extends DataClass implements Insertable<User> {
     return (StringBuffer('User(')
           ..write('id: $id, ')
           ..write('username: $username, ')
-          ..write('passwordHash: $passwordHash')
+          ..write('passwordHash: $passwordHash, ')
+          ..write('authProvider: $authProvider, ')
+          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, username, passwordHash);
+  int get hashCode =>
+      Object.hash(id, username, passwordHash, authProvider, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is User &&
           other.id == this.id &&
           other.username == this.username &&
-          other.passwordHash == this.passwordHash);
+          other.passwordHash == this.passwordHash &&
+          other.authProvider == this.authProvider &&
+          other.createdAt == this.createdAt);
 }
 
 class UsersCompanion extends UpdateCompanion<User> {
   final Value<String> id;
   final Value<String> username;
   final Value<String> passwordHash;
+  final Value<String> authProvider;
+  final Value<DateTime> createdAt;
   final Value<int> rowid;
   const UsersCompanion({
     this.id = const Value.absent(),
     this.username = const Value.absent(),
     this.passwordHash = const Value.absent(),
+    this.authProvider = const Value.absent(),
+    this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   UsersCompanion.insert({
     required String id,
     required String username,
     required String passwordHash,
+    this.authProvider = const Value.absent(),
+    required DateTime createdAt,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         username = Value(username),
-        passwordHash = Value(passwordHash);
+        passwordHash = Value(passwordHash),
+        createdAt = Value(createdAt);
   static Insertable<User> custom({
     Expression<String>? id,
     Expression<String>? username,
     Expression<String>? passwordHash,
+    Expression<String>? authProvider,
+    Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (username != null) 'username': username,
       if (passwordHash != null) 'password_hash': passwordHash,
+      if (authProvider != null) 'auth_provider': authProvider,
+      if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -198,11 +271,15 @@ class UsersCompanion extends UpdateCompanion<User> {
       {Value<String>? id,
       Value<String>? username,
       Value<String>? passwordHash,
+      Value<String>? authProvider,
+      Value<DateTime>? createdAt,
       Value<int>? rowid}) {
     return UsersCompanion(
       id: id ?? this.id,
       username: username ?? this.username,
       passwordHash: passwordHash ?? this.passwordHash,
+      authProvider: authProvider ?? this.authProvider,
+      createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -219,6 +296,12 @@ class UsersCompanion extends UpdateCompanion<User> {
     if (passwordHash.present) {
       map['password_hash'] = Variable<String>(passwordHash.value);
     }
+    if (authProvider.present) {
+      map['auth_provider'] = Variable<String>(authProvider.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -231,6 +314,8 @@ class UsersCompanion extends UpdateCompanion<User> {
           ..write('id: $id, ')
           ..write('username: $username, ')
           ..write('passwordHash: $passwordHash, ')
+          ..write('authProvider: $authProvider, ')
+          ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1404,10 +1489,11 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  static const VerificationMeta _ownerIdMeta =
+      const VerificationMeta('ownerId');
   @override
-  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
-      'user_id', aliasedName, false,
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+      'owner_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
   @override
@@ -1420,25 +1506,70 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
   late final GeneratedColumn<String> description = GeneratedColumn<String>(
       'description', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _dueDateMeta =
-      const VerificationMeta('dueDate');
+  static const VerificationMeta _startDateMeta =
+      const VerificationMeta('startDate');
   @override
-  late final GeneratedColumn<DateTime> dueDate = GeneratedColumn<DateTime>(
-      'due_date', aliasedName, true,
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+      'start_date', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
-  static const VerificationMeta _completedMeta =
-      const VerificationMeta('completed');
+  static const VerificationMeta _endDateMeta =
+      const VerificationMeta('endDate');
   @override
-  late final GeneratedColumn<bool> completed = GeneratedColumn<bool>(
-      'completed', aliasedName, false,
-      type: DriftSqlType.bool,
+  late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
+      'end_date', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _recurrenceRuleMeta =
+      const VerificationMeta('recurrenceRule');
+  @override
+  late final GeneratedColumn<String> recurrenceRule = GeneratedColumn<String>(
+      'recurrence_rule', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _reminderSettingsMeta =
+      const VerificationMeta('reminderSettings');
+  @override
+  late final GeneratedColumn<String> reminderSettings = GeneratedColumn<String>(
+      'reminder_settings', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('CHECK ("completed" IN (0, 1))'),
-      defaultValue: const Constant(false));
+      defaultValue: const Constant('pending'));
+  static const VerificationMeta _linkedEntityIdMeta =
+      const VerificationMeta('linkedEntityId');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, userId, title, description, dueDate, completed];
+  late final GeneratedColumn<String> linkedEntityId = GeneratedColumn<String>(
+      'linked_entity_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        ownerId,
+        title,
+        description,
+        startDate,
+        endDate,
+        recurrenceRule,
+        reminderSettings,
+        status,
+        linkedEntityId,
+        createdAt,
+        updatedAt
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1454,11 +1585,11 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('user_id')) {
-      context.handle(_userIdMeta,
-          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    if (data.containsKey('owner_id')) {
+      context.handle(_ownerIdMeta,
+          ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta));
     } else if (isInserting) {
-      context.missing(_userIdMeta);
+      context.missing(_ownerIdMeta);
     }
     if (data.containsKey('title')) {
       context.handle(
@@ -1472,13 +1603,47 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
           description.isAcceptableOrUnknown(
               data['description']!, _descriptionMeta));
     }
-    if (data.containsKey('due_date')) {
-      context.handle(_dueDateMeta,
-          dueDate.isAcceptableOrUnknown(data['due_date']!, _dueDateMeta));
+    if (data.containsKey('start_date')) {
+      context.handle(_startDateMeta,
+          startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta));
     }
-    if (data.containsKey('completed')) {
-      context.handle(_completedMeta,
-          completed.isAcceptableOrUnknown(data['completed']!, _completedMeta));
+    if (data.containsKey('end_date')) {
+      context.handle(_endDateMeta,
+          endDate.isAcceptableOrUnknown(data['end_date']!, _endDateMeta));
+    }
+    if (data.containsKey('recurrence_rule')) {
+      context.handle(
+          _recurrenceRuleMeta,
+          recurrenceRule.isAcceptableOrUnknown(
+              data['recurrence_rule']!, _recurrenceRuleMeta));
+    }
+    if (data.containsKey('reminder_settings')) {
+      context.handle(
+          _reminderSettingsMeta,
+          reminderSettings.isAcceptableOrUnknown(
+              data['reminder_settings']!, _reminderSettingsMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('linked_entity_id')) {
+      context.handle(
+          _linkedEntityIdMeta,
+          linkedEntityId.isAcceptableOrUnknown(
+              data['linked_entity_id']!, _linkedEntityIdMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
     }
     return context;
   }
@@ -1491,16 +1656,28 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     return Task(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      userId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
+      ownerId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner_id'])!,
       title: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
       description: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}description']),
-      dueDate: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}due_date']),
-      completed: attachedDatabase.typeMapping
-          .read(DriftSqlType.bool, data['${effectivePrefix}completed'])!,
+      startDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}start_date']),
+      endDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}end_date']),
+      recurrenceRule: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}recurrence_rule']),
+      reminderSettings: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}reminder_settings']),
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      linkedEntityId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}linked_entity_id']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
     );
   }
 
@@ -1512,46 +1689,86 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
 
 class Task extends DataClass implements Insertable<Task> {
   final String id;
-  final String userId;
+  final String ownerId;
   final String title;
   final String? description;
-  final DateTime? dueDate;
-  final bool completed;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final String? recurrenceRule;
+  final String? reminderSettings;
+  final String status;
+  final String? linkedEntityId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
   const Task(
       {required this.id,
-      required this.userId,
+      required this.ownerId,
       required this.title,
       this.description,
-      this.dueDate,
-      required this.completed});
+      this.startDate,
+      this.endDate,
+      this.recurrenceRule,
+      this.reminderSettings,
+      required this.status,
+      this.linkedEntityId,
+      required this.createdAt,
+      required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['user_id'] = Variable<String>(userId);
+    map['owner_id'] = Variable<String>(ownerId);
     map['title'] = Variable<String>(title);
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
     }
-    if (!nullToAbsent || dueDate != null) {
-      map['due_date'] = Variable<DateTime>(dueDate);
+    if (!nullToAbsent || startDate != null) {
+      map['start_date'] = Variable<DateTime>(startDate);
     }
-    map['completed'] = Variable<bool>(completed);
+    if (!nullToAbsent || endDate != null) {
+      map['end_date'] = Variable<DateTime>(endDate);
+    }
+    if (!nullToAbsent || recurrenceRule != null) {
+      map['recurrence_rule'] = Variable<String>(recurrenceRule);
+    }
+    if (!nullToAbsent || reminderSettings != null) {
+      map['reminder_settings'] = Variable<String>(reminderSettings);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || linkedEntityId != null) {
+      map['linked_entity_id'] = Variable<String>(linkedEntityId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
 
   TasksCompanion toCompanion(bool nullToAbsent) {
     return TasksCompanion(
       id: Value(id),
-      userId: Value(userId),
+      ownerId: Value(ownerId),
       title: Value(title),
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
-      dueDate: dueDate == null && nullToAbsent
+      startDate: startDate == null && nullToAbsent
           ? const Value.absent()
-          : Value(dueDate),
-      completed: Value(completed),
+          : Value(startDate),
+      endDate: endDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endDate),
+      recurrenceRule: recurrenceRule == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recurrenceRule),
+      reminderSettings: reminderSettings == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reminderSettings),
+      status: Value(status),
+      linkedEntityId: linkedEntityId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(linkedEntityId),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
     );
   }
 
@@ -1560,11 +1777,17 @@ class Task extends DataClass implements Insertable<Task> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Task(
       id: serializer.fromJson<String>(json['id']),
-      userId: serializer.fromJson<String>(json['userId']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
       title: serializer.fromJson<String>(json['title']),
       description: serializer.fromJson<String?>(json['description']),
-      dueDate: serializer.fromJson<DateTime?>(json['dueDate']),
-      completed: serializer.fromJson<bool>(json['completed']),
+      startDate: serializer.fromJson<DateTime?>(json['startDate']),
+      endDate: serializer.fromJson<DateTime?>(json['endDate']),
+      recurrenceRule: serializer.fromJson<String?>(json['recurrenceRule']),
+      reminderSettings: serializer.fromJson<String?>(json['reminderSettings']),
+      status: serializer.fromJson<String>(json['status']),
+      linkedEntityId: serializer.fromJson<String?>(json['linkedEntityId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
   @override
@@ -1572,38 +1795,72 @@ class Task extends DataClass implements Insertable<Task> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'userId': serializer.toJson<String>(userId),
+      'ownerId': serializer.toJson<String>(ownerId),
       'title': serializer.toJson<String>(title),
       'description': serializer.toJson<String?>(description),
-      'dueDate': serializer.toJson<DateTime?>(dueDate),
-      'completed': serializer.toJson<bool>(completed),
+      'startDate': serializer.toJson<DateTime?>(startDate),
+      'endDate': serializer.toJson<DateTime?>(endDate),
+      'recurrenceRule': serializer.toJson<String?>(recurrenceRule),
+      'reminderSettings': serializer.toJson<String?>(reminderSettings),
+      'status': serializer.toJson<String>(status),
+      'linkedEntityId': serializer.toJson<String?>(linkedEntityId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
   Task copyWith(
           {String? id,
-          String? userId,
+          String? ownerId,
           String? title,
           Value<String?> description = const Value.absent(),
-          Value<DateTime?> dueDate = const Value.absent(),
-          bool? completed}) =>
+          Value<DateTime?> startDate = const Value.absent(),
+          Value<DateTime?> endDate = const Value.absent(),
+          Value<String?> recurrenceRule = const Value.absent(),
+          Value<String?> reminderSettings = const Value.absent(),
+          String? status,
+          Value<String?> linkedEntityId = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
       Task(
         id: id ?? this.id,
-        userId: userId ?? this.userId,
+        ownerId: ownerId ?? this.ownerId,
         title: title ?? this.title,
         description: description.present ? description.value : this.description,
-        dueDate: dueDate.present ? dueDate.value : this.dueDate,
-        completed: completed ?? this.completed,
+        startDate: startDate.present ? startDate.value : this.startDate,
+        endDate: endDate.present ? endDate.value : this.endDate,
+        recurrenceRule:
+            recurrenceRule.present ? recurrenceRule.value : this.recurrenceRule,
+        reminderSettings: reminderSettings.present
+            ? reminderSettings.value
+            : this.reminderSettings,
+        status: status ?? this.status,
+        linkedEntityId:
+            linkedEntityId.present ? linkedEntityId.value : this.linkedEntityId,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
       );
   Task copyWithCompanion(TasksCompanion data) {
     return Task(
       id: data.id.present ? data.id.value : this.id,
-      userId: data.userId.present ? data.userId.value : this.userId,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       title: data.title.present ? data.title.value : this.title,
       description:
           data.description.present ? data.description.value : this.description,
-      dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
-      completed: data.completed.present ? data.completed.value : this.completed,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      endDate: data.endDate.present ? data.endDate.value : this.endDate,
+      recurrenceRule: data.recurrenceRule.present
+          ? data.recurrenceRule.value
+          : this.recurrenceRule,
+      reminderSettings: data.reminderSettings.present
+          ? data.reminderSettings.value
+          : this.reminderSettings,
+      status: data.status.present ? data.status.value : this.status,
+      linkedEntityId: data.linkedEntityId.present
+          ? data.linkedEntityId.value
+          : this.linkedEntityId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
 
@@ -1611,93 +1868,160 @@ class Task extends DataClass implements Insertable<Task> {
   String toString() {
     return (StringBuffer('Task(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
+          ..write('ownerId: $ownerId, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
-          ..write('dueDate: $dueDate, ')
-          ..write('completed: $completed')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('recurrenceRule: $recurrenceRule, ')
+          ..write('reminderSettings: $reminderSettings, ')
+          ..write('status: $status, ')
+          ..write('linkedEntityId: $linkedEntityId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, userId, title, description, dueDate, completed);
+  int get hashCode => Object.hash(
+      id,
+      ownerId,
+      title,
+      description,
+      startDate,
+      endDate,
+      recurrenceRule,
+      reminderSettings,
+      status,
+      linkedEntityId,
+      createdAt,
+      updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Task &&
           other.id == this.id &&
-          other.userId == this.userId &&
+          other.ownerId == this.ownerId &&
           other.title == this.title &&
           other.description == this.description &&
-          other.dueDate == this.dueDate &&
-          other.completed == this.completed);
+          other.startDate == this.startDate &&
+          other.endDate == this.endDate &&
+          other.recurrenceRule == this.recurrenceRule &&
+          other.reminderSettings == this.reminderSettings &&
+          other.status == this.status &&
+          other.linkedEntityId == this.linkedEntityId &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
 }
 
 class TasksCompanion extends UpdateCompanion<Task> {
   final Value<String> id;
-  final Value<String> userId;
+  final Value<String> ownerId;
   final Value<String> title;
   final Value<String?> description;
-  final Value<DateTime?> dueDate;
-  final Value<bool> completed;
+  final Value<DateTime?> startDate;
+  final Value<DateTime?> endDate;
+  final Value<String?> recurrenceRule;
+  final Value<String?> reminderSettings;
+  final Value<String> status;
+  final Value<String?> linkedEntityId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const TasksCompanion({
     this.id = const Value.absent(),
-    this.userId = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.title = const Value.absent(),
     this.description = const Value.absent(),
-    this.dueDate = const Value.absent(),
-    this.completed = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.endDate = const Value.absent(),
+    this.recurrenceRule = const Value.absent(),
+    this.reminderSettings = const Value.absent(),
+    this.status = const Value.absent(),
+    this.linkedEntityId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TasksCompanion.insert({
     required String id,
-    required String userId,
+    required String ownerId,
     required String title,
     this.description = const Value.absent(),
-    this.dueDate = const Value.absent(),
-    this.completed = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.endDate = const Value.absent(),
+    this.recurrenceRule = const Value.absent(),
+    this.reminderSettings = const Value.absent(),
+    this.status = const Value.absent(),
+    this.linkedEntityId = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
-        userId = Value(userId),
-        title = Value(title);
+        ownerId = Value(ownerId),
+        title = Value(title),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
   static Insertable<Task> custom({
     Expression<String>? id,
-    Expression<String>? userId,
+    Expression<String>? ownerId,
     Expression<String>? title,
     Expression<String>? description,
-    Expression<DateTime>? dueDate,
-    Expression<bool>? completed,
+    Expression<DateTime>? startDate,
+    Expression<DateTime>? endDate,
+    Expression<String>? recurrenceRule,
+    Expression<String>? reminderSettings,
+    Expression<String>? status,
+    Expression<String>? linkedEntityId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (userId != null) 'user_id': userId,
+      if (ownerId != null) 'owner_id': ownerId,
       if (title != null) 'title': title,
       if (description != null) 'description': description,
-      if (dueDate != null) 'due_date': dueDate,
-      if (completed != null) 'completed': completed,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
+      if (recurrenceRule != null) 'recurrence_rule': recurrenceRule,
+      if (reminderSettings != null) 'reminder_settings': reminderSettings,
+      if (status != null) 'status': status,
+      if (linkedEntityId != null) 'linked_entity_id': linkedEntityId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
   TasksCompanion copyWith(
       {Value<String>? id,
-      Value<String>? userId,
+      Value<String>? ownerId,
       Value<String>? title,
       Value<String?>? description,
-      Value<DateTime?>? dueDate,
-      Value<bool>? completed,
+      Value<DateTime?>? startDate,
+      Value<DateTime?>? endDate,
+      Value<String?>? recurrenceRule,
+      Value<String?>? reminderSettings,
+      Value<String>? status,
+      Value<String?>? linkedEntityId,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
     return TasksCompanion(
       id: id ?? this.id,
-      userId: userId ?? this.userId,
+      ownerId: ownerId ?? this.ownerId,
       title: title ?? this.title,
       description: description ?? this.description,
-      dueDate: dueDate ?? this.dueDate,
-      completed: completed ?? this.completed,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      recurrenceRule: recurrenceRule ?? this.recurrenceRule,
+      reminderSettings: reminderSettings ?? this.reminderSettings,
+      status: status ?? this.status,
+      linkedEntityId: linkedEntityId ?? this.linkedEntityId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1708,8 +2032,8 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (userId.present) {
-      map['user_id'] = Variable<String>(userId.value);
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
@@ -1717,11 +2041,29 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (description.present) {
       map['description'] = Variable<String>(description.value);
     }
-    if (dueDate.present) {
-      map['due_date'] = Variable<DateTime>(dueDate.value);
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
     }
-    if (completed.present) {
-      map['completed'] = Variable<bool>(completed.value);
+    if (endDate.present) {
+      map['end_date'] = Variable<DateTime>(endDate.value);
+    }
+    if (recurrenceRule.present) {
+      map['recurrence_rule'] = Variable<String>(recurrenceRule.value);
+    }
+    if (reminderSettings.present) {
+      map['reminder_settings'] = Variable<String>(reminderSettings.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (linkedEntityId.present) {
+      map['linked_entity_id'] = Variable<String>(linkedEntityId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1733,11 +2075,17 @@ class TasksCompanion extends UpdateCompanion<Task> {
   String toString() {
     return (StringBuffer('TasksCompanion(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
+          ..write('ownerId: $ownerId, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
-          ..write('dueDate: $dueDate, ')
-          ..write('completed: $completed, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('recurrenceRule: $recurrenceRule, ')
+          ..write('reminderSettings: $reminderSettings, ')
+          ..write('status: $status, ')
+          ..write('linkedEntityId: $linkedEntityId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1755,24 +2103,79 @@ class $JournalEntriesTable extends JournalEntries
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  static const VerificationMeta _ownerIdMeta =
+      const VerificationMeta('ownerId');
   @override
-  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
-      'user_id', aliasedName, false,
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+      'owner_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _dateMeta = const VerificationMeta('date');
-  @override
-  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
-      'date', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
   static const VerificationMeta _contentMeta =
       const VerificationMeta('content');
   @override
   late final GeneratedColumn<String> content = GeneratedColumn<String>(
       'content', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _startDateMeta =
+      const VerificationMeta('startDate');
   @override
-  List<GeneratedColumn> get $columns => [id, userId, date, content];
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+      'start_date', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _endDateMeta =
+      const VerificationMeta('endDate');
+  @override
+  late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
+      'end_date', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _recurrenceRuleMeta =
+      const VerificationMeta('recurrenceRule');
+  @override
+  late final GeneratedColumn<String> recurrenceRule = GeneratedColumn<String>(
+      'recurrence_rule', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _reminderSettingsMeta =
+      const VerificationMeta('reminderSettings');
+  @override
+  late final GeneratedColumn<String> reminderSettings = GeneratedColumn<String>(
+      'reminder_settings', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _linkedEntityIdMeta =
+      const VerificationMeta('linkedEntityId');
+  @override
+  late final GeneratedColumn<String> linkedEntityId = GeneratedColumn<String>(
+      'linked_entity_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        ownerId,
+        content,
+        startDate,
+        endDate,
+        recurrenceRule,
+        reminderSettings,
+        status,
+        linkedEntityId,
+        createdAt,
+        updatedAt
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1788,23 +2191,59 @@ class $JournalEntriesTable extends JournalEntries
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('user_id')) {
-      context.handle(_userIdMeta,
-          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    if (data.containsKey('owner_id')) {
+      context.handle(_ownerIdMeta,
+          ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta));
     } else if (isInserting) {
-      context.missing(_userIdMeta);
-    }
-    if (data.containsKey('date')) {
-      context.handle(
-          _dateMeta, date.isAcceptableOrUnknown(data['date']!, _dateMeta));
-    } else if (isInserting) {
-      context.missing(_dateMeta);
+      context.missing(_ownerIdMeta);
     }
     if (data.containsKey('content')) {
       context.handle(_contentMeta,
           content.isAcceptableOrUnknown(data['content']!, _contentMeta));
     } else if (isInserting) {
       context.missing(_contentMeta);
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(_startDateMeta,
+          startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta));
+    }
+    if (data.containsKey('end_date')) {
+      context.handle(_endDateMeta,
+          endDate.isAcceptableOrUnknown(data['end_date']!, _endDateMeta));
+    }
+    if (data.containsKey('recurrence_rule')) {
+      context.handle(
+          _recurrenceRuleMeta,
+          recurrenceRule.isAcceptableOrUnknown(
+              data['recurrence_rule']!, _recurrenceRuleMeta));
+    }
+    if (data.containsKey('reminder_settings')) {
+      context.handle(
+          _reminderSettingsMeta,
+          reminderSettings.isAcceptableOrUnknown(
+              data['reminder_settings']!, _reminderSettingsMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('linked_entity_id')) {
+      context.handle(
+          _linkedEntityIdMeta,
+          linkedEntityId.isAcceptableOrUnknown(
+              data['linked_entity_id']!, _linkedEntityIdMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
     }
     return context;
   }
@@ -1817,12 +2256,26 @@ class $JournalEntriesTable extends JournalEntries
     return JournalEntry(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      userId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
-      date: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
+      ownerId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner_id'])!,
       content: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}content'])!,
+      startDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}start_date']),
+      endDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}end_date']),
+      recurrenceRule: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}recurrence_rule']),
+      reminderSettings: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}reminder_settings']),
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status']),
+      linkedEntityId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}linked_entity_id']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
     );
   }
 
@@ -1834,30 +2287,81 @@ class $JournalEntriesTable extends JournalEntries
 
 class JournalEntry extends DataClass implements Insertable<JournalEntry> {
   final String id;
-  final String userId;
-  final DateTime date;
+  final String ownerId;
   final String content;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final String? recurrenceRule;
+  final String? reminderSettings;
+  final String? status;
+  final String? linkedEntityId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
   const JournalEntry(
       {required this.id,
-      required this.userId,
-      required this.date,
-      required this.content});
+      required this.ownerId,
+      required this.content,
+      this.startDate,
+      this.endDate,
+      this.recurrenceRule,
+      this.reminderSettings,
+      this.status,
+      this.linkedEntityId,
+      required this.createdAt,
+      required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['user_id'] = Variable<String>(userId);
-    map['date'] = Variable<DateTime>(date);
+    map['owner_id'] = Variable<String>(ownerId);
     map['content'] = Variable<String>(content);
+    if (!nullToAbsent || startDate != null) {
+      map['start_date'] = Variable<DateTime>(startDate);
+    }
+    if (!nullToAbsent || endDate != null) {
+      map['end_date'] = Variable<DateTime>(endDate);
+    }
+    if (!nullToAbsent || recurrenceRule != null) {
+      map['recurrence_rule'] = Variable<String>(recurrenceRule);
+    }
+    if (!nullToAbsent || reminderSettings != null) {
+      map['reminder_settings'] = Variable<String>(reminderSettings);
+    }
+    if (!nullToAbsent || status != null) {
+      map['status'] = Variable<String>(status);
+    }
+    if (!nullToAbsent || linkedEntityId != null) {
+      map['linked_entity_id'] = Variable<String>(linkedEntityId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
 
   JournalEntriesCompanion toCompanion(bool nullToAbsent) {
     return JournalEntriesCompanion(
       id: Value(id),
-      userId: Value(userId),
-      date: Value(date),
+      ownerId: Value(ownerId),
       content: Value(content),
+      startDate: startDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startDate),
+      endDate: endDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endDate),
+      recurrenceRule: recurrenceRule == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recurrenceRule),
+      reminderSettings: reminderSettings == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reminderSettings),
+      status:
+          status == null && nullToAbsent ? const Value.absent() : Value(status),
+      linkedEntityId: linkedEntityId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(linkedEntityId),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
     );
   }
 
@@ -1866,9 +2370,16 @@ class JournalEntry extends DataClass implements Insertable<JournalEntry> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return JournalEntry(
       id: serializer.fromJson<String>(json['id']),
-      userId: serializer.fromJson<String>(json['userId']),
-      date: serializer.fromJson<DateTime>(json['date']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
       content: serializer.fromJson<String>(json['content']),
+      startDate: serializer.fromJson<DateTime?>(json['startDate']),
+      endDate: serializer.fromJson<DateTime?>(json['endDate']),
+      recurrenceRule: serializer.fromJson<String?>(json['recurrenceRule']),
+      reminderSettings: serializer.fromJson<String?>(json['reminderSettings']),
+      status: serializer.fromJson<String?>(json['status']),
+      linkedEntityId: serializer.fromJson<String?>(json['linkedEntityId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
   @override
@@ -1876,26 +2387,67 @@ class JournalEntry extends DataClass implements Insertable<JournalEntry> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'userId': serializer.toJson<String>(userId),
-      'date': serializer.toJson<DateTime>(date),
+      'ownerId': serializer.toJson<String>(ownerId),
       'content': serializer.toJson<String>(content),
+      'startDate': serializer.toJson<DateTime?>(startDate),
+      'endDate': serializer.toJson<DateTime?>(endDate),
+      'recurrenceRule': serializer.toJson<String?>(recurrenceRule),
+      'reminderSettings': serializer.toJson<String?>(reminderSettings),
+      'status': serializer.toJson<String?>(status),
+      'linkedEntityId': serializer.toJson<String?>(linkedEntityId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
   JournalEntry copyWith(
-          {String? id, String? userId, DateTime? date, String? content}) =>
+          {String? id,
+          String? ownerId,
+          String? content,
+          Value<DateTime?> startDate = const Value.absent(),
+          Value<DateTime?> endDate = const Value.absent(),
+          Value<String?> recurrenceRule = const Value.absent(),
+          Value<String?> reminderSettings = const Value.absent(),
+          Value<String?> status = const Value.absent(),
+          Value<String?> linkedEntityId = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt}) =>
       JournalEntry(
         id: id ?? this.id,
-        userId: userId ?? this.userId,
-        date: date ?? this.date,
+        ownerId: ownerId ?? this.ownerId,
         content: content ?? this.content,
+        startDate: startDate.present ? startDate.value : this.startDate,
+        endDate: endDate.present ? endDate.value : this.endDate,
+        recurrenceRule:
+            recurrenceRule.present ? recurrenceRule.value : this.recurrenceRule,
+        reminderSettings: reminderSettings.present
+            ? reminderSettings.value
+            : this.reminderSettings,
+        status: status.present ? status.value : this.status,
+        linkedEntityId:
+            linkedEntityId.present ? linkedEntityId.value : this.linkedEntityId,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
       );
   JournalEntry copyWithCompanion(JournalEntriesCompanion data) {
     return JournalEntry(
       id: data.id.present ? data.id.value : this.id,
-      userId: data.userId.present ? data.userId.value : this.userId,
-      date: data.date.present ? data.date.value : this.date,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       content: data.content.present ? data.content.value : this.content,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      endDate: data.endDate.present ? data.endDate.value : this.endDate,
+      recurrenceRule: data.recurrenceRule.present
+          ? data.recurrenceRule.value
+          : this.recurrenceRule,
+      reminderSettings: data.reminderSettings.present
+          ? data.reminderSettings.value
+          : this.reminderSettings,
+      status: data.status.present ? data.status.value : this.status,
+      linkedEntityId: data.linkedEntityId.present
+          ? data.linkedEntityId.value
+          : this.linkedEntityId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
 
@@ -1903,75 +2455,150 @@ class JournalEntry extends DataClass implements Insertable<JournalEntry> {
   String toString() {
     return (StringBuffer('JournalEntry(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
-          ..write('date: $date, ')
-          ..write('content: $content')
+          ..write('ownerId: $ownerId, ')
+          ..write('content: $content, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('recurrenceRule: $recurrenceRule, ')
+          ..write('reminderSettings: $reminderSettings, ')
+          ..write('status: $status, ')
+          ..write('linkedEntityId: $linkedEntityId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, userId, date, content);
+  int get hashCode => Object.hash(
+      id,
+      ownerId,
+      content,
+      startDate,
+      endDate,
+      recurrenceRule,
+      reminderSettings,
+      status,
+      linkedEntityId,
+      createdAt,
+      updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is JournalEntry &&
           other.id == this.id &&
-          other.userId == this.userId &&
-          other.date == this.date &&
-          other.content == this.content);
+          other.ownerId == this.ownerId &&
+          other.content == this.content &&
+          other.startDate == this.startDate &&
+          other.endDate == this.endDate &&
+          other.recurrenceRule == this.recurrenceRule &&
+          other.reminderSettings == this.reminderSettings &&
+          other.status == this.status &&
+          other.linkedEntityId == this.linkedEntityId &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
 }
 
 class JournalEntriesCompanion extends UpdateCompanion<JournalEntry> {
   final Value<String> id;
-  final Value<String> userId;
-  final Value<DateTime> date;
+  final Value<String> ownerId;
   final Value<String> content;
+  final Value<DateTime?> startDate;
+  final Value<DateTime?> endDate;
+  final Value<String?> recurrenceRule;
+  final Value<String?> reminderSettings;
+  final Value<String?> status;
+  final Value<String?> linkedEntityId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const JournalEntriesCompanion({
     this.id = const Value.absent(),
-    this.userId = const Value.absent(),
-    this.date = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.content = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.endDate = const Value.absent(),
+    this.recurrenceRule = const Value.absent(),
+    this.reminderSettings = const Value.absent(),
+    this.status = const Value.absent(),
+    this.linkedEntityId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   JournalEntriesCompanion.insert({
     required String id,
-    required String userId,
-    required DateTime date,
+    required String ownerId,
     required String content,
+    this.startDate = const Value.absent(),
+    this.endDate = const Value.absent(),
+    this.recurrenceRule = const Value.absent(),
+    this.reminderSettings = const Value.absent(),
+    this.status = const Value.absent(),
+    this.linkedEntityId = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
-        userId = Value(userId),
-        date = Value(date),
-        content = Value(content);
+        ownerId = Value(ownerId),
+        content = Value(content),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
   static Insertable<JournalEntry> custom({
     Expression<String>? id,
-    Expression<String>? userId,
-    Expression<DateTime>? date,
+    Expression<String>? ownerId,
     Expression<String>? content,
+    Expression<DateTime>? startDate,
+    Expression<DateTime>? endDate,
+    Expression<String>? recurrenceRule,
+    Expression<String>? reminderSettings,
+    Expression<String>? status,
+    Expression<String>? linkedEntityId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (userId != null) 'user_id': userId,
-      if (date != null) 'date': date,
+      if (ownerId != null) 'owner_id': ownerId,
       if (content != null) 'content': content,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
+      if (recurrenceRule != null) 'recurrence_rule': recurrenceRule,
+      if (reminderSettings != null) 'reminder_settings': reminderSettings,
+      if (status != null) 'status': status,
+      if (linkedEntityId != null) 'linked_entity_id': linkedEntityId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
   JournalEntriesCompanion copyWith(
       {Value<String>? id,
-      Value<String>? userId,
-      Value<DateTime>? date,
+      Value<String>? ownerId,
       Value<String>? content,
+      Value<DateTime?>? startDate,
+      Value<DateTime?>? endDate,
+      Value<String?>? recurrenceRule,
+      Value<String?>? reminderSettings,
+      Value<String?>? status,
+      Value<String?>? linkedEntityId,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
     return JournalEntriesCompanion(
       id: id ?? this.id,
-      userId: userId ?? this.userId,
-      date: date ?? this.date,
+      ownerId: ownerId ?? this.ownerId,
       content: content ?? this.content,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      recurrenceRule: recurrenceRule ?? this.recurrenceRule,
+      reminderSettings: reminderSettings ?? this.reminderSettings,
+      status: status ?? this.status,
+      linkedEntityId: linkedEntityId ?? this.linkedEntityId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1982,14 +2609,35 @@ class JournalEntriesCompanion extends UpdateCompanion<JournalEntry> {
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (userId.present) {
-      map['user_id'] = Variable<String>(userId.value);
-    }
-    if (date.present) {
-      map['date'] = Variable<DateTime>(date.value);
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
     }
     if (content.present) {
       map['content'] = Variable<String>(content.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (endDate.present) {
+      map['end_date'] = Variable<DateTime>(endDate.value);
+    }
+    if (recurrenceRule.present) {
+      map['recurrence_rule'] = Variable<String>(recurrenceRule.value);
+    }
+    if (reminderSettings.present) {
+      map['reminder_settings'] = Variable<String>(reminderSettings.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (linkedEntityId.present) {
+      map['linked_entity_id'] = Variable<String>(linkedEntityId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -2001,9 +2649,16 @@ class JournalEntriesCompanion extends UpdateCompanion<JournalEntry> {
   String toString() {
     return (StringBuffer('JournalEntriesCompanion(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
-          ..write('date: $date, ')
+          ..write('ownerId: $ownerId, ')
           ..write('content: $content, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('recurrenceRule: $recurrenceRule, ')
+          ..write('reminderSettings: $reminderSettings, ')
+          ..write('status: $status, ')
+          ..write('linkedEntityId: $linkedEntityId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2020,10 +2675,11 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  static const VerificationMeta _ownerIdMeta =
+      const VerificationMeta('ownerId');
   @override
-  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
-      'user_id', aliasedName, false,
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+      'owner_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
@@ -2041,7 +2697,7 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
           'CHECK ("completed_today" IN (0, 1))'),
       defaultValue: const Constant(false));
   @override
-  List<GeneratedColumn> get $columns => [id, userId, name, completedToday];
+  List<GeneratedColumn> get $columns => [id, ownerId, name, completedToday];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2057,11 +2713,11 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('user_id')) {
-      context.handle(_userIdMeta,
-          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    if (data.containsKey('owner_id')) {
+      context.handle(_ownerIdMeta,
+          ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta));
     } else if (isInserting) {
-      context.missing(_userIdMeta);
+      context.missing(_ownerIdMeta);
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -2086,8 +2742,8 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     return Habit(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      userId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
+      ownerId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner_id'])!,
       name: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
       completedToday: attachedDatabase.typeMapping
@@ -2103,19 +2759,19 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
 
 class Habit extends DataClass implements Insertable<Habit> {
   final String id;
-  final String userId;
+  final String ownerId;
   final String name;
   final bool completedToday;
   const Habit(
       {required this.id,
-      required this.userId,
+      required this.ownerId,
       required this.name,
       required this.completedToday});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['user_id'] = Variable<String>(userId);
+    map['owner_id'] = Variable<String>(ownerId);
     map['name'] = Variable<String>(name);
     map['completed_today'] = Variable<bool>(completedToday);
     return map;
@@ -2124,7 +2780,7 @@ class Habit extends DataClass implements Insertable<Habit> {
   HabitsCompanion toCompanion(bool nullToAbsent) {
     return HabitsCompanion(
       id: Value(id),
-      userId: Value(userId),
+      ownerId: Value(ownerId),
       name: Value(name),
       completedToday: Value(completedToday),
     );
@@ -2135,7 +2791,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Habit(
       id: serializer.fromJson<String>(json['id']),
-      userId: serializer.fromJson<String>(json['userId']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
       name: serializer.fromJson<String>(json['name']),
       completedToday: serializer.fromJson<bool>(json['completedToday']),
     );
@@ -2145,24 +2801,24 @@ class Habit extends DataClass implements Insertable<Habit> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'userId': serializer.toJson<String>(userId),
+      'ownerId': serializer.toJson<String>(ownerId),
       'name': serializer.toJson<String>(name),
       'completedToday': serializer.toJson<bool>(completedToday),
     };
   }
 
   Habit copyWith(
-          {String? id, String? userId, String? name, bool? completedToday}) =>
+          {String? id, String? ownerId, String? name, bool? completedToday}) =>
       Habit(
         id: id ?? this.id,
-        userId: userId ?? this.userId,
+        ownerId: ownerId ?? this.ownerId,
         name: name ?? this.name,
         completedToday: completedToday ?? this.completedToday,
       );
   Habit copyWithCompanion(HabitsCompanion data) {
     return Habit(
       id: data.id.present ? data.id.value : this.id,
-      userId: data.userId.present ? data.userId.value : this.userId,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       name: data.name.present ? data.name.value : this.name,
       completedToday: data.completedToday.present
           ? data.completedToday.value
@@ -2174,7 +2830,7 @@ class Habit extends DataClass implements Insertable<Habit> {
   String toString() {
     return (StringBuffer('Habit(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
+          ..write('ownerId: $ownerId, ')
           ..write('name: $name, ')
           ..write('completedToday: $completedToday')
           ..write(')'))
@@ -2182,49 +2838,49 @@ class Habit extends DataClass implements Insertable<Habit> {
   }
 
   @override
-  int get hashCode => Object.hash(id, userId, name, completedToday);
+  int get hashCode => Object.hash(id, ownerId, name, completedToday);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Habit &&
           other.id == this.id &&
-          other.userId == this.userId &&
+          other.ownerId == this.ownerId &&
           other.name == this.name &&
           other.completedToday == this.completedToday);
 }
 
 class HabitsCompanion extends UpdateCompanion<Habit> {
   final Value<String> id;
-  final Value<String> userId;
+  final Value<String> ownerId;
   final Value<String> name;
   final Value<bool> completedToday;
   final Value<int> rowid;
   const HabitsCompanion({
     this.id = const Value.absent(),
-    this.userId = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.name = const Value.absent(),
     this.completedToday = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   HabitsCompanion.insert({
     required String id,
-    required String userId,
+    required String ownerId,
     required String name,
     this.completedToday = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
-        userId = Value(userId),
+        ownerId = Value(ownerId),
         name = Value(name);
   static Insertable<Habit> custom({
     Expression<String>? id,
-    Expression<String>? userId,
+    Expression<String>? ownerId,
     Expression<String>? name,
     Expression<bool>? completedToday,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (userId != null) 'user_id': userId,
+      if (ownerId != null) 'owner_id': ownerId,
       if (name != null) 'name': name,
       if (completedToday != null) 'completed_today': completedToday,
       if (rowid != null) 'rowid': rowid,
@@ -2233,13 +2889,13 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
 
   HabitsCompanion copyWith(
       {Value<String>? id,
-      Value<String>? userId,
+      Value<String>? ownerId,
       Value<String>? name,
       Value<bool>? completedToday,
       Value<int>? rowid}) {
     return HabitsCompanion(
       id: id ?? this.id,
-      userId: userId ?? this.userId,
+      ownerId: ownerId ?? this.ownerId,
       name: name ?? this.name,
       completedToday: completedToday ?? this.completedToday,
       rowid: rowid ?? this.rowid,
@@ -2252,8 +2908,8 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (userId.present) {
-      map['user_id'] = Variable<String>(userId.value);
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
@@ -2271,7 +2927,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
   String toString() {
     return (StringBuffer('HabitsCompanion(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
+          ..write('ownerId: $ownerId, ')
           ..write('name: $name, ')
           ..write('completedToday: $completedToday, ')
           ..write('rowid: $rowid')
@@ -2290,10 +2946,11 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  static const VerificationMeta _ownerIdMeta =
+      const VerificationMeta('ownerId');
   @override
-  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
-      'user_id', aliasedName, false,
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+      'owner_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
   @override
@@ -2306,7 +2963,7 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
       'status', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
   @override
-  List<GeneratedColumn> get $columns => [id, userId, title, status];
+  List<GeneratedColumn> get $columns => [id, ownerId, title, status];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2322,11 +2979,11 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('user_id')) {
-      context.handle(_userIdMeta,
-          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    if (data.containsKey('owner_id')) {
+      context.handle(_ownerIdMeta,
+          ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta));
     } else if (isInserting) {
-      context.missing(_userIdMeta);
+      context.missing(_ownerIdMeta);
     }
     if (data.containsKey('title')) {
       context.handle(
@@ -2349,8 +3006,8 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
     return Project(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      userId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
+      ownerId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner_id'])!,
       title: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
       status: attachedDatabase.typeMapping
@@ -2366,19 +3023,19 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
 
 class Project extends DataClass implements Insertable<Project> {
   final String id;
-  final String userId;
+  final String ownerId;
   final String title;
   final String? status;
   const Project(
       {required this.id,
-      required this.userId,
+      required this.ownerId,
       required this.title,
       this.status});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['user_id'] = Variable<String>(userId);
+    map['owner_id'] = Variable<String>(ownerId);
     map['title'] = Variable<String>(title);
     if (!nullToAbsent || status != null) {
       map['status'] = Variable<String>(status);
@@ -2389,7 +3046,7 @@ class Project extends DataClass implements Insertable<Project> {
   ProjectsCompanion toCompanion(bool nullToAbsent) {
     return ProjectsCompanion(
       id: Value(id),
-      userId: Value(userId),
+      ownerId: Value(ownerId),
       title: Value(title),
       status:
           status == null && nullToAbsent ? const Value.absent() : Value(status),
@@ -2401,7 +3058,7 @@ class Project extends DataClass implements Insertable<Project> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Project(
       id: serializer.fromJson<String>(json['id']),
-      userId: serializer.fromJson<String>(json['userId']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
       title: serializer.fromJson<String>(json['title']),
       status: serializer.fromJson<String?>(json['status']),
     );
@@ -2411,7 +3068,7 @@ class Project extends DataClass implements Insertable<Project> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'userId': serializer.toJson<String>(userId),
+      'ownerId': serializer.toJson<String>(ownerId),
       'title': serializer.toJson<String>(title),
       'status': serializer.toJson<String?>(status),
     };
@@ -2419,19 +3076,19 @@ class Project extends DataClass implements Insertable<Project> {
 
   Project copyWith(
           {String? id,
-          String? userId,
+          String? ownerId,
           String? title,
           Value<String?> status = const Value.absent()}) =>
       Project(
         id: id ?? this.id,
-        userId: userId ?? this.userId,
+        ownerId: ownerId ?? this.ownerId,
         title: title ?? this.title,
         status: status.present ? status.value : this.status,
       );
   Project copyWithCompanion(ProjectsCompanion data) {
     return Project(
       id: data.id.present ? data.id.value : this.id,
-      userId: data.userId.present ? data.userId.value : this.userId,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       title: data.title.present ? data.title.value : this.title,
       status: data.status.present ? data.status.value : this.status,
     );
@@ -2441,7 +3098,7 @@ class Project extends DataClass implements Insertable<Project> {
   String toString() {
     return (StringBuffer('Project(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
+          ..write('ownerId: $ownerId, ')
           ..write('title: $title, ')
           ..write('status: $status')
           ..write(')'))
@@ -2449,49 +3106,49 @@ class Project extends DataClass implements Insertable<Project> {
   }
 
   @override
-  int get hashCode => Object.hash(id, userId, title, status);
+  int get hashCode => Object.hash(id, ownerId, title, status);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Project &&
           other.id == this.id &&
-          other.userId == this.userId &&
+          other.ownerId == this.ownerId &&
           other.title == this.title &&
           other.status == this.status);
 }
 
 class ProjectsCompanion extends UpdateCompanion<Project> {
   final Value<String> id;
-  final Value<String> userId;
+  final Value<String> ownerId;
   final Value<String> title;
   final Value<String?> status;
   final Value<int> rowid;
   const ProjectsCompanion({
     this.id = const Value.absent(),
-    this.userId = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.title = const Value.absent(),
     this.status = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ProjectsCompanion.insert({
     required String id,
-    required String userId,
+    required String ownerId,
     required String title,
     this.status = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
-        userId = Value(userId),
+        ownerId = Value(ownerId),
         title = Value(title);
   static Insertable<Project> custom({
     Expression<String>? id,
-    Expression<String>? userId,
+    Expression<String>? ownerId,
     Expression<String>? title,
     Expression<String>? status,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (userId != null) 'user_id': userId,
+      if (ownerId != null) 'owner_id': ownerId,
       if (title != null) 'title': title,
       if (status != null) 'status': status,
       if (rowid != null) 'rowid': rowid,
@@ -2500,13 +3157,13 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
 
   ProjectsCompanion copyWith(
       {Value<String>? id,
-      Value<String>? userId,
+      Value<String>? ownerId,
       Value<String>? title,
       Value<String?>? status,
       Value<int>? rowid}) {
     return ProjectsCompanion(
       id: id ?? this.id,
-      userId: userId ?? this.userId,
+      ownerId: ownerId ?? this.ownerId,
       title: title ?? this.title,
       status: status ?? this.status,
       rowid: rowid ?? this.rowid,
@@ -2519,8 +3176,8 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (userId.present) {
-      map['user_id'] = Variable<String>(userId.value);
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
@@ -2538,7 +3195,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
   String toString() {
     return (StringBuffer('ProjectsCompanion(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
+          ..write('ownerId: $ownerId, ')
           ..write('title: $title, ')
           ..write('status: $status, ')
           ..write('rowid: $rowid')
@@ -2558,10 +3215,11 @@ class $FinanceRecordsTable extends FinanceRecords
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  static const VerificationMeta _ownerIdMeta =
+      const VerificationMeta('ownerId');
   @override
-  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
-      'user_id', aliasedName, false,
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+      'owner_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _amountMeta = const VerificationMeta('amount');
   @override
@@ -2580,7 +3238,7 @@ class $FinanceRecordsTable extends FinanceRecords
       'date', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
   @override
-  List<GeneratedColumn> get $columns => [id, userId, amount, category, date];
+  List<GeneratedColumn> get $columns => [id, ownerId, amount, category, date];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2596,11 +3254,11 @@ class $FinanceRecordsTable extends FinanceRecords
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('user_id')) {
-      context.handle(_userIdMeta,
-          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    if (data.containsKey('owner_id')) {
+      context.handle(_ownerIdMeta,
+          ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta));
     } else if (isInserting) {
-      context.missing(_userIdMeta);
+      context.missing(_ownerIdMeta);
     }
     if (data.containsKey('amount')) {
       context.handle(_amountMeta,
@@ -2629,8 +3287,8 @@ class $FinanceRecordsTable extends FinanceRecords
     return FinanceRecord(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      userId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
+      ownerId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner_id'])!,
       amount: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}amount'])!,
       category: attachedDatabase.typeMapping
@@ -2648,13 +3306,13 @@ class $FinanceRecordsTable extends FinanceRecords
 
 class FinanceRecord extends DataClass implements Insertable<FinanceRecord> {
   final String id;
-  final String userId;
+  final String ownerId;
   final double amount;
   final String? category;
   final DateTime date;
   const FinanceRecord(
       {required this.id,
-      required this.userId,
+      required this.ownerId,
       required this.amount,
       this.category,
       required this.date});
@@ -2662,7 +3320,7 @@ class FinanceRecord extends DataClass implements Insertable<FinanceRecord> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['user_id'] = Variable<String>(userId);
+    map['owner_id'] = Variable<String>(ownerId);
     map['amount'] = Variable<double>(amount);
     if (!nullToAbsent || category != null) {
       map['category'] = Variable<String>(category);
@@ -2674,7 +3332,7 @@ class FinanceRecord extends DataClass implements Insertable<FinanceRecord> {
   FinanceRecordsCompanion toCompanion(bool nullToAbsent) {
     return FinanceRecordsCompanion(
       id: Value(id),
-      userId: Value(userId),
+      ownerId: Value(ownerId),
       amount: Value(amount),
       category: category == null && nullToAbsent
           ? const Value.absent()
@@ -2688,7 +3346,7 @@ class FinanceRecord extends DataClass implements Insertable<FinanceRecord> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return FinanceRecord(
       id: serializer.fromJson<String>(json['id']),
-      userId: serializer.fromJson<String>(json['userId']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
       amount: serializer.fromJson<double>(json['amount']),
       category: serializer.fromJson<String?>(json['category']),
       date: serializer.fromJson<DateTime>(json['date']),
@@ -2699,7 +3357,7 @@ class FinanceRecord extends DataClass implements Insertable<FinanceRecord> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'userId': serializer.toJson<String>(userId),
+      'ownerId': serializer.toJson<String>(ownerId),
       'amount': serializer.toJson<double>(amount),
       'category': serializer.toJson<String?>(category),
       'date': serializer.toJson<DateTime>(date),
@@ -2708,13 +3366,13 @@ class FinanceRecord extends DataClass implements Insertable<FinanceRecord> {
 
   FinanceRecord copyWith(
           {String? id,
-          String? userId,
+          String? ownerId,
           double? amount,
           Value<String?> category = const Value.absent(),
           DateTime? date}) =>
       FinanceRecord(
         id: id ?? this.id,
-        userId: userId ?? this.userId,
+        ownerId: ownerId ?? this.ownerId,
         amount: amount ?? this.amount,
         category: category.present ? category.value : this.category,
         date: date ?? this.date,
@@ -2722,7 +3380,7 @@ class FinanceRecord extends DataClass implements Insertable<FinanceRecord> {
   FinanceRecord copyWithCompanion(FinanceRecordsCompanion data) {
     return FinanceRecord(
       id: data.id.present ? data.id.value : this.id,
-      userId: data.userId.present ? data.userId.value : this.userId,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       amount: data.amount.present ? data.amount.value : this.amount,
       category: data.category.present ? data.category.value : this.category,
       date: data.date.present ? data.date.value : this.date,
@@ -2733,7 +3391,7 @@ class FinanceRecord extends DataClass implements Insertable<FinanceRecord> {
   String toString() {
     return (StringBuffer('FinanceRecord(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
+          ..write('ownerId: $ownerId, ')
           ..write('amount: $amount, ')
           ..write('category: $category, ')
           ..write('date: $date')
@@ -2742,13 +3400,13 @@ class FinanceRecord extends DataClass implements Insertable<FinanceRecord> {
   }
 
   @override
-  int get hashCode => Object.hash(id, userId, amount, category, date);
+  int get hashCode => Object.hash(id, ownerId, amount, category, date);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is FinanceRecord &&
           other.id == this.id &&
-          other.userId == this.userId &&
+          other.ownerId == this.ownerId &&
           other.amount == this.amount &&
           other.category == this.category &&
           other.date == this.date);
@@ -2756,14 +3414,14 @@ class FinanceRecord extends DataClass implements Insertable<FinanceRecord> {
 
 class FinanceRecordsCompanion extends UpdateCompanion<FinanceRecord> {
   final Value<String> id;
-  final Value<String> userId;
+  final Value<String> ownerId;
   final Value<double> amount;
   final Value<String?> category;
   final Value<DateTime> date;
   final Value<int> rowid;
   const FinanceRecordsCompanion({
     this.id = const Value.absent(),
-    this.userId = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.amount = const Value.absent(),
     this.category = const Value.absent(),
     this.date = const Value.absent(),
@@ -2771,18 +3429,18 @@ class FinanceRecordsCompanion extends UpdateCompanion<FinanceRecord> {
   });
   FinanceRecordsCompanion.insert({
     required String id,
-    required String userId,
+    required String ownerId,
     required double amount,
     this.category = const Value.absent(),
     required DateTime date,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
-        userId = Value(userId),
+        ownerId = Value(ownerId),
         amount = Value(amount),
         date = Value(date);
   static Insertable<FinanceRecord> custom({
     Expression<String>? id,
-    Expression<String>? userId,
+    Expression<String>? ownerId,
     Expression<double>? amount,
     Expression<String>? category,
     Expression<DateTime>? date,
@@ -2790,7 +3448,7 @@ class FinanceRecordsCompanion extends UpdateCompanion<FinanceRecord> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (userId != null) 'user_id': userId,
+      if (ownerId != null) 'owner_id': ownerId,
       if (amount != null) 'amount': amount,
       if (category != null) 'category': category,
       if (date != null) 'date': date,
@@ -2800,14 +3458,14 @@ class FinanceRecordsCompanion extends UpdateCompanion<FinanceRecord> {
 
   FinanceRecordsCompanion copyWith(
       {Value<String>? id,
-      Value<String>? userId,
+      Value<String>? ownerId,
       Value<double>? amount,
       Value<String?>? category,
       Value<DateTime>? date,
       Value<int>? rowid}) {
     return FinanceRecordsCompanion(
       id: id ?? this.id,
-      userId: userId ?? this.userId,
+      ownerId: ownerId ?? this.ownerId,
       amount: amount ?? this.amount,
       category: category ?? this.category,
       date: date ?? this.date,
@@ -2821,8 +3479,8 @@ class FinanceRecordsCompanion extends UpdateCompanion<FinanceRecord> {
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (userId.present) {
-      map['user_id'] = Variable<String>(userId.value);
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
     }
     if (amount.present) {
       map['amount'] = Variable<double>(amount.value);
@@ -2843,7 +3501,7 @@ class FinanceRecordsCompanion extends UpdateCompanion<FinanceRecord> {
   String toString() {
     return (StringBuffer('FinanceRecordsCompanion(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
+          ..write('ownerId: $ownerId, ')
           ..write('amount: $amount, ')
           ..write('category: $category, ')
           ..write('date: $date, ')
@@ -2864,10 +3522,11 @@ class $HealthRecordsTable extends HealthRecords
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  static const VerificationMeta _ownerIdMeta =
+      const VerificationMeta('ownerId');
   @override
-  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
-      'user_id', aliasedName, false,
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+      'owner_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _typeMeta = const VerificationMeta('type');
   @override
@@ -2885,7 +3544,7 @@ class $HealthRecordsTable extends HealthRecords
       'date', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
   @override
-  List<GeneratedColumn> get $columns => [id, userId, type, value, date];
+  List<GeneratedColumn> get $columns => [id, ownerId, type, value, date];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2901,11 +3560,11 @@ class $HealthRecordsTable extends HealthRecords
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('user_id')) {
-      context.handle(_userIdMeta,
-          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    if (data.containsKey('owner_id')) {
+      context.handle(_ownerIdMeta,
+          ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta));
     } else if (isInserting) {
-      context.missing(_userIdMeta);
+      context.missing(_ownerIdMeta);
     }
     if (data.containsKey('type')) {
       context.handle(
@@ -2934,8 +3593,8 @@ class $HealthRecordsTable extends HealthRecords
     return HealthRecord(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      userId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
+      ownerId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner_id'])!,
       type: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
       value: attachedDatabase.typeMapping
@@ -2953,13 +3612,13 @@ class $HealthRecordsTable extends HealthRecords
 
 class HealthRecord extends DataClass implements Insertable<HealthRecord> {
   final String id;
-  final String userId;
+  final String ownerId;
   final String type;
   final String? value;
   final DateTime date;
   const HealthRecord(
       {required this.id,
-      required this.userId,
+      required this.ownerId,
       required this.type,
       this.value,
       required this.date});
@@ -2967,7 +3626,7 @@ class HealthRecord extends DataClass implements Insertable<HealthRecord> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['user_id'] = Variable<String>(userId);
+    map['owner_id'] = Variable<String>(ownerId);
     map['type'] = Variable<String>(type);
     if (!nullToAbsent || value != null) {
       map['value'] = Variable<String>(value);
@@ -2979,7 +3638,7 @@ class HealthRecord extends DataClass implements Insertable<HealthRecord> {
   HealthRecordsCompanion toCompanion(bool nullToAbsent) {
     return HealthRecordsCompanion(
       id: Value(id),
-      userId: Value(userId),
+      ownerId: Value(ownerId),
       type: Value(type),
       value:
           value == null && nullToAbsent ? const Value.absent() : Value(value),
@@ -2992,7 +3651,7 @@ class HealthRecord extends DataClass implements Insertable<HealthRecord> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return HealthRecord(
       id: serializer.fromJson<String>(json['id']),
-      userId: serializer.fromJson<String>(json['userId']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
       type: serializer.fromJson<String>(json['type']),
       value: serializer.fromJson<String?>(json['value']),
       date: serializer.fromJson<DateTime>(json['date']),
@@ -3003,7 +3662,7 @@ class HealthRecord extends DataClass implements Insertable<HealthRecord> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'userId': serializer.toJson<String>(userId),
+      'ownerId': serializer.toJson<String>(ownerId),
       'type': serializer.toJson<String>(type),
       'value': serializer.toJson<String?>(value),
       'date': serializer.toJson<DateTime>(date),
@@ -3012,13 +3671,13 @@ class HealthRecord extends DataClass implements Insertable<HealthRecord> {
 
   HealthRecord copyWith(
           {String? id,
-          String? userId,
+          String? ownerId,
           String? type,
           Value<String?> value = const Value.absent(),
           DateTime? date}) =>
       HealthRecord(
         id: id ?? this.id,
-        userId: userId ?? this.userId,
+        ownerId: ownerId ?? this.ownerId,
         type: type ?? this.type,
         value: value.present ? value.value : this.value,
         date: date ?? this.date,
@@ -3026,7 +3685,7 @@ class HealthRecord extends DataClass implements Insertable<HealthRecord> {
   HealthRecord copyWithCompanion(HealthRecordsCompanion data) {
     return HealthRecord(
       id: data.id.present ? data.id.value : this.id,
-      userId: data.userId.present ? data.userId.value : this.userId,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       type: data.type.present ? data.type.value : this.type,
       value: data.value.present ? data.value.value : this.value,
       date: data.date.present ? data.date.value : this.date,
@@ -3037,7 +3696,7 @@ class HealthRecord extends DataClass implements Insertable<HealthRecord> {
   String toString() {
     return (StringBuffer('HealthRecord(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
+          ..write('ownerId: $ownerId, ')
           ..write('type: $type, ')
           ..write('value: $value, ')
           ..write('date: $date')
@@ -3046,13 +3705,13 @@ class HealthRecord extends DataClass implements Insertable<HealthRecord> {
   }
 
   @override
-  int get hashCode => Object.hash(id, userId, type, value, date);
+  int get hashCode => Object.hash(id, ownerId, type, value, date);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is HealthRecord &&
           other.id == this.id &&
-          other.userId == this.userId &&
+          other.ownerId == this.ownerId &&
           other.type == this.type &&
           other.value == this.value &&
           other.date == this.date);
@@ -3060,14 +3719,14 @@ class HealthRecord extends DataClass implements Insertable<HealthRecord> {
 
 class HealthRecordsCompanion extends UpdateCompanion<HealthRecord> {
   final Value<String> id;
-  final Value<String> userId;
+  final Value<String> ownerId;
   final Value<String> type;
   final Value<String?> value;
   final Value<DateTime> date;
   final Value<int> rowid;
   const HealthRecordsCompanion({
     this.id = const Value.absent(),
-    this.userId = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.type = const Value.absent(),
     this.value = const Value.absent(),
     this.date = const Value.absent(),
@@ -3075,18 +3734,18 @@ class HealthRecordsCompanion extends UpdateCompanion<HealthRecord> {
   });
   HealthRecordsCompanion.insert({
     required String id,
-    required String userId,
+    required String ownerId,
     required String type,
     this.value = const Value.absent(),
     required DateTime date,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
-        userId = Value(userId),
+        ownerId = Value(ownerId),
         type = Value(type),
         date = Value(date);
   static Insertable<HealthRecord> custom({
     Expression<String>? id,
-    Expression<String>? userId,
+    Expression<String>? ownerId,
     Expression<String>? type,
     Expression<String>? value,
     Expression<DateTime>? date,
@@ -3094,7 +3753,7 @@ class HealthRecordsCompanion extends UpdateCompanion<HealthRecord> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (userId != null) 'user_id': userId,
+      if (ownerId != null) 'owner_id': ownerId,
       if (type != null) 'type': type,
       if (value != null) 'value': value,
       if (date != null) 'date': date,
@@ -3104,14 +3763,14 @@ class HealthRecordsCompanion extends UpdateCompanion<HealthRecord> {
 
   HealthRecordsCompanion copyWith(
       {Value<String>? id,
-      Value<String>? userId,
+      Value<String>? ownerId,
       Value<String>? type,
       Value<String?>? value,
       Value<DateTime>? date,
       Value<int>? rowid}) {
     return HealthRecordsCompanion(
       id: id ?? this.id,
-      userId: userId ?? this.userId,
+      ownerId: ownerId ?? this.ownerId,
       type: type ?? this.type,
       value: value ?? this.value,
       date: date ?? this.date,
@@ -3125,8 +3784,8 @@ class HealthRecordsCompanion extends UpdateCompanion<HealthRecord> {
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (userId.present) {
-      map['user_id'] = Variable<String>(userId.value);
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
     }
     if (type.present) {
       map['type'] = Variable<String>(type.value);
@@ -3147,7 +3806,7 @@ class HealthRecordsCompanion extends UpdateCompanion<HealthRecord> {
   String toString() {
     return (StringBuffer('HealthRecordsCompanion(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
+          ..write('ownerId: $ownerId, ')
           ..write('type: $type, ')
           ..write('value: $value, ')
           ..write('date: $date, ')
@@ -3168,10 +3827,11 @@ class $MenstruationCyclesTable extends MenstruationCycles
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  static const VerificationMeta _ownerIdMeta =
+      const VerificationMeta('ownerId');
   @override
-  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
-      'user_id', aliasedName, false,
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+      'owner_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _startDateMeta =
       const VerificationMeta('startDate');
@@ -3186,7 +3846,7 @@ class $MenstruationCyclesTable extends MenstruationCycles
       'end_date', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
-  List<GeneratedColumn> get $columns => [id, userId, startDate, endDate];
+  List<GeneratedColumn> get $columns => [id, ownerId, startDate, endDate];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -3202,11 +3862,11 @@ class $MenstruationCyclesTable extends MenstruationCycles
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('user_id')) {
-      context.handle(_userIdMeta,
-          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    if (data.containsKey('owner_id')) {
+      context.handle(_ownerIdMeta,
+          ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta));
     } else if (isInserting) {
-      context.missing(_userIdMeta);
+      context.missing(_ownerIdMeta);
     }
     if (data.containsKey('start_date')) {
       context.handle(_startDateMeta,
@@ -3229,8 +3889,8 @@ class $MenstruationCyclesTable extends MenstruationCycles
     return MenstruationCycle(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      userId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
+      ownerId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner_id'])!,
       startDate: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}start_date'])!,
       endDate: attachedDatabase.typeMapping
@@ -3247,19 +3907,19 @@ class $MenstruationCyclesTable extends MenstruationCycles
 class MenstruationCycle extends DataClass
     implements Insertable<MenstruationCycle> {
   final String id;
-  final String userId;
+  final String ownerId;
   final DateTime startDate;
   final DateTime? endDate;
   const MenstruationCycle(
       {required this.id,
-      required this.userId,
+      required this.ownerId,
       required this.startDate,
       this.endDate});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['user_id'] = Variable<String>(userId);
+    map['owner_id'] = Variable<String>(ownerId);
     map['start_date'] = Variable<DateTime>(startDate);
     if (!nullToAbsent || endDate != null) {
       map['end_date'] = Variable<DateTime>(endDate);
@@ -3270,7 +3930,7 @@ class MenstruationCycle extends DataClass
   MenstruationCyclesCompanion toCompanion(bool nullToAbsent) {
     return MenstruationCyclesCompanion(
       id: Value(id),
-      userId: Value(userId),
+      ownerId: Value(ownerId),
       startDate: Value(startDate),
       endDate: endDate == null && nullToAbsent
           ? const Value.absent()
@@ -3283,7 +3943,7 @@ class MenstruationCycle extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return MenstruationCycle(
       id: serializer.fromJson<String>(json['id']),
-      userId: serializer.fromJson<String>(json['userId']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
       startDate: serializer.fromJson<DateTime>(json['startDate']),
       endDate: serializer.fromJson<DateTime?>(json['endDate']),
     );
@@ -3293,7 +3953,7 @@ class MenstruationCycle extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'userId': serializer.toJson<String>(userId),
+      'ownerId': serializer.toJson<String>(ownerId),
       'startDate': serializer.toJson<DateTime>(startDate),
       'endDate': serializer.toJson<DateTime?>(endDate),
     };
@@ -3301,19 +3961,19 @@ class MenstruationCycle extends DataClass
 
   MenstruationCycle copyWith(
           {String? id,
-          String? userId,
+          String? ownerId,
           DateTime? startDate,
           Value<DateTime?> endDate = const Value.absent()}) =>
       MenstruationCycle(
         id: id ?? this.id,
-        userId: userId ?? this.userId,
+        ownerId: ownerId ?? this.ownerId,
         startDate: startDate ?? this.startDate,
         endDate: endDate.present ? endDate.value : this.endDate,
       );
   MenstruationCycle copyWithCompanion(MenstruationCyclesCompanion data) {
     return MenstruationCycle(
       id: data.id.present ? data.id.value : this.id,
-      userId: data.userId.present ? data.userId.value : this.userId,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
       endDate: data.endDate.present ? data.endDate.value : this.endDate,
     );
@@ -3323,7 +3983,7 @@ class MenstruationCycle extends DataClass
   String toString() {
     return (StringBuffer('MenstruationCycle(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
+          ..write('ownerId: $ownerId, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate')
           ..write(')'))
@@ -3331,49 +3991,49 @@ class MenstruationCycle extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(id, userId, startDate, endDate);
+  int get hashCode => Object.hash(id, ownerId, startDate, endDate);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is MenstruationCycle &&
           other.id == this.id &&
-          other.userId == this.userId &&
+          other.ownerId == this.ownerId &&
           other.startDate == this.startDate &&
           other.endDate == this.endDate);
 }
 
 class MenstruationCyclesCompanion extends UpdateCompanion<MenstruationCycle> {
   final Value<String> id;
-  final Value<String> userId;
+  final Value<String> ownerId;
   final Value<DateTime> startDate;
   final Value<DateTime?> endDate;
   final Value<int> rowid;
   const MenstruationCyclesCompanion({
     this.id = const Value.absent(),
-    this.userId = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   MenstruationCyclesCompanion.insert({
     required String id,
-    required String userId,
+    required String ownerId,
     required DateTime startDate,
     this.endDate = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
-        userId = Value(userId),
+        ownerId = Value(ownerId),
         startDate = Value(startDate);
   static Insertable<MenstruationCycle> custom({
     Expression<String>? id,
-    Expression<String>? userId,
+    Expression<String>? ownerId,
     Expression<DateTime>? startDate,
     Expression<DateTime>? endDate,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (userId != null) 'user_id': userId,
+      if (ownerId != null) 'owner_id': ownerId,
       if (startDate != null) 'start_date': startDate,
       if (endDate != null) 'end_date': endDate,
       if (rowid != null) 'rowid': rowid,
@@ -3382,13 +4042,13 @@ class MenstruationCyclesCompanion extends UpdateCompanion<MenstruationCycle> {
 
   MenstruationCyclesCompanion copyWith(
       {Value<String>? id,
-      Value<String>? userId,
+      Value<String>? ownerId,
       Value<DateTime>? startDate,
       Value<DateTime?>? endDate,
       Value<int>? rowid}) {
     return MenstruationCyclesCompanion(
       id: id ?? this.id,
-      userId: userId ?? this.userId,
+      ownerId: ownerId ?? this.ownerId,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       rowid: rowid ?? this.rowid,
@@ -3401,8 +4061,8 @@ class MenstruationCyclesCompanion extends UpdateCompanion<MenstruationCycle> {
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (userId.present) {
-      map['user_id'] = Variable<String>(userId.value);
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
     }
     if (startDate.present) {
       map['start_date'] = Variable<DateTime>(startDate.value);
@@ -3420,7 +4080,7 @@ class MenstruationCyclesCompanion extends UpdateCompanion<MenstruationCycle> {
   String toString() {
     return (StringBuffer('MenstruationCyclesCompanion(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
+          ..write('ownerId: $ownerId, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('rowid: $rowid')
@@ -3440,10 +4100,11 @@ class $NutritionEntriesTable extends NutritionEntries
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  static const VerificationMeta _ownerIdMeta =
+      const VerificationMeta('ownerId');
   @override
-  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
-      'user_id', aliasedName, false,
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+      'owner_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   static const VerificationMeta _mealMeta = const VerificationMeta('meal');
   @override
@@ -3461,7 +4122,7 @@ class $NutritionEntriesTable extends NutritionEntries
       'date', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
   @override
-  List<GeneratedColumn> get $columns => [id, userId, meal, notes, date];
+  List<GeneratedColumn> get $columns => [id, ownerId, meal, notes, date];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -3477,11 +4138,11 @@ class $NutritionEntriesTable extends NutritionEntries
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('user_id')) {
-      context.handle(_userIdMeta,
-          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    if (data.containsKey('owner_id')) {
+      context.handle(_ownerIdMeta,
+          ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta));
     } else if (isInserting) {
-      context.missing(_userIdMeta);
+      context.missing(_ownerIdMeta);
     }
     if (data.containsKey('meal')) {
       context.handle(
@@ -3510,8 +4171,8 @@ class $NutritionEntriesTable extends NutritionEntries
     return NutritionEntry(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      userId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
+      ownerId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner_id'])!,
       meal: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}meal'])!,
       notes: attachedDatabase.typeMapping
@@ -3529,13 +4190,13 @@ class $NutritionEntriesTable extends NutritionEntries
 
 class NutritionEntry extends DataClass implements Insertable<NutritionEntry> {
   final String id;
-  final String userId;
+  final String ownerId;
   final String meal;
   final String? notes;
   final DateTime date;
   const NutritionEntry(
       {required this.id,
-      required this.userId,
+      required this.ownerId,
       required this.meal,
       this.notes,
       required this.date});
@@ -3543,7 +4204,7 @@ class NutritionEntry extends DataClass implements Insertable<NutritionEntry> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['user_id'] = Variable<String>(userId);
+    map['owner_id'] = Variable<String>(ownerId);
     map['meal'] = Variable<String>(meal);
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
@@ -3555,7 +4216,7 @@ class NutritionEntry extends DataClass implements Insertable<NutritionEntry> {
   NutritionEntriesCompanion toCompanion(bool nullToAbsent) {
     return NutritionEntriesCompanion(
       id: Value(id),
-      userId: Value(userId),
+      ownerId: Value(ownerId),
       meal: Value(meal),
       notes:
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
@@ -3568,7 +4229,7 @@ class NutritionEntry extends DataClass implements Insertable<NutritionEntry> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return NutritionEntry(
       id: serializer.fromJson<String>(json['id']),
-      userId: serializer.fromJson<String>(json['userId']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
       meal: serializer.fromJson<String>(json['meal']),
       notes: serializer.fromJson<String?>(json['notes']),
       date: serializer.fromJson<DateTime>(json['date']),
@@ -3579,7 +4240,7 @@ class NutritionEntry extends DataClass implements Insertable<NutritionEntry> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'userId': serializer.toJson<String>(userId),
+      'ownerId': serializer.toJson<String>(ownerId),
       'meal': serializer.toJson<String>(meal),
       'notes': serializer.toJson<String?>(notes),
       'date': serializer.toJson<DateTime>(date),
@@ -3588,13 +4249,13 @@ class NutritionEntry extends DataClass implements Insertable<NutritionEntry> {
 
   NutritionEntry copyWith(
           {String? id,
-          String? userId,
+          String? ownerId,
           String? meal,
           Value<String?> notes = const Value.absent(),
           DateTime? date}) =>
       NutritionEntry(
         id: id ?? this.id,
-        userId: userId ?? this.userId,
+        ownerId: ownerId ?? this.ownerId,
         meal: meal ?? this.meal,
         notes: notes.present ? notes.value : this.notes,
         date: date ?? this.date,
@@ -3602,7 +4263,7 @@ class NutritionEntry extends DataClass implements Insertable<NutritionEntry> {
   NutritionEntry copyWithCompanion(NutritionEntriesCompanion data) {
     return NutritionEntry(
       id: data.id.present ? data.id.value : this.id,
-      userId: data.userId.present ? data.userId.value : this.userId,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       meal: data.meal.present ? data.meal.value : this.meal,
       notes: data.notes.present ? data.notes.value : this.notes,
       date: data.date.present ? data.date.value : this.date,
@@ -3613,7 +4274,7 @@ class NutritionEntry extends DataClass implements Insertable<NutritionEntry> {
   String toString() {
     return (StringBuffer('NutritionEntry(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
+          ..write('ownerId: $ownerId, ')
           ..write('meal: $meal, ')
           ..write('notes: $notes, ')
           ..write('date: $date')
@@ -3622,13 +4283,13 @@ class NutritionEntry extends DataClass implements Insertable<NutritionEntry> {
   }
 
   @override
-  int get hashCode => Object.hash(id, userId, meal, notes, date);
+  int get hashCode => Object.hash(id, ownerId, meal, notes, date);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is NutritionEntry &&
           other.id == this.id &&
-          other.userId == this.userId &&
+          other.ownerId == this.ownerId &&
           other.meal == this.meal &&
           other.notes == this.notes &&
           other.date == this.date);
@@ -3636,14 +4297,14 @@ class NutritionEntry extends DataClass implements Insertable<NutritionEntry> {
 
 class NutritionEntriesCompanion extends UpdateCompanion<NutritionEntry> {
   final Value<String> id;
-  final Value<String> userId;
+  final Value<String> ownerId;
   final Value<String> meal;
   final Value<String?> notes;
   final Value<DateTime> date;
   final Value<int> rowid;
   const NutritionEntriesCompanion({
     this.id = const Value.absent(),
-    this.userId = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.meal = const Value.absent(),
     this.notes = const Value.absent(),
     this.date = const Value.absent(),
@@ -3651,18 +4312,18 @@ class NutritionEntriesCompanion extends UpdateCompanion<NutritionEntry> {
   });
   NutritionEntriesCompanion.insert({
     required String id,
-    required String userId,
+    required String ownerId,
     required String meal,
     this.notes = const Value.absent(),
     required DateTime date,
     this.rowid = const Value.absent(),
   })  : id = Value(id),
-        userId = Value(userId),
+        ownerId = Value(ownerId),
         meal = Value(meal),
         date = Value(date);
   static Insertable<NutritionEntry> custom({
     Expression<String>? id,
-    Expression<String>? userId,
+    Expression<String>? ownerId,
     Expression<String>? meal,
     Expression<String>? notes,
     Expression<DateTime>? date,
@@ -3670,7 +4331,7 @@ class NutritionEntriesCompanion extends UpdateCompanion<NutritionEntry> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (userId != null) 'user_id': userId,
+      if (ownerId != null) 'owner_id': ownerId,
       if (meal != null) 'meal': meal,
       if (notes != null) 'notes': notes,
       if (date != null) 'date': date,
@@ -3680,14 +4341,14 @@ class NutritionEntriesCompanion extends UpdateCompanion<NutritionEntry> {
 
   NutritionEntriesCompanion copyWith(
       {Value<String>? id,
-      Value<String>? userId,
+      Value<String>? ownerId,
       Value<String>? meal,
       Value<String?>? notes,
       Value<DateTime>? date,
       Value<int>? rowid}) {
     return NutritionEntriesCompanion(
       id: id ?? this.id,
-      userId: userId ?? this.userId,
+      ownerId: ownerId ?? this.ownerId,
       meal: meal ?? this.meal,
       notes: notes ?? this.notes,
       date: date ?? this.date,
@@ -3701,8 +4362,8 @@ class NutritionEntriesCompanion extends UpdateCompanion<NutritionEntry> {
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (userId.present) {
-      map['user_id'] = Variable<String>(userId.value);
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
     }
     if (meal.present) {
       map['meal'] = Variable<String>(meal.value);
@@ -3723,7 +4384,7 @@ class NutritionEntriesCompanion extends UpdateCompanion<NutritionEntry> {
   String toString() {
     return (StringBuffer('NutritionEntriesCompanion(')
           ..write('id: $id, ')
-          ..write('userId: $userId, ')
+          ..write('ownerId: $ownerId, ')
           ..write('meal: $meal, ')
           ..write('notes: $notes, ')
           ..write('date: $date, ')
@@ -3777,12 +4438,16 @@ typedef $$UsersTableCreateCompanionBuilder = UsersCompanion Function({
   required String id,
   required String username,
   required String passwordHash,
+  Value<String> authProvider,
+  required DateTime createdAt,
   Value<int> rowid,
 });
 typedef $$UsersTableUpdateCompanionBuilder = UsersCompanion Function({
   Value<String> id,
   Value<String> username,
   Value<String> passwordHash,
+  Value<String> authProvider,
+  Value<DateTime> createdAt,
   Value<int> rowid,
 });
 
@@ -3802,6 +4467,12 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
 
   ColumnFilters<String> get passwordHash => $composableBuilder(
       column: $table.passwordHash, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get authProvider => $composableBuilder(
+      column: $table.authProvider, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
 }
 
 class $$UsersTableOrderingComposer
@@ -3822,6 +4493,13 @@ class $$UsersTableOrderingComposer
   ColumnOrderings<String> get passwordHash => $composableBuilder(
       column: $table.passwordHash,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get authProvider => $composableBuilder(
+      column: $table.authProvider,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 }
 
 class $$UsersTableAnnotationComposer
@@ -3841,6 +4519,12 @@ class $$UsersTableAnnotationComposer
 
   GeneratedColumn<String> get passwordHash => $composableBuilder(
       column: $table.passwordHash, builder: (column) => column);
+
+  GeneratedColumn<String> get authProvider => $composableBuilder(
+      column: $table.authProvider, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
 
 class $$UsersTableTableManager extends RootTableManager<
@@ -3869,24 +4553,32 @@ class $$UsersTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<String> username = const Value.absent(),
             Value<String> passwordHash = const Value.absent(),
+            Value<String> authProvider = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               UsersCompanion(
             id: id,
             username: username,
             passwordHash: passwordHash,
+            authProvider: authProvider,
+            createdAt: createdAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
             required String username,
             required String passwordHash,
+            Value<String> authProvider = const Value.absent(),
+            required DateTime createdAt,
             Value<int> rowid = const Value.absent(),
           }) =>
               UsersCompanion.insert(
             id: id,
             username: username,
             passwordHash: passwordHash,
+            authProvider: authProvider,
+            createdAt: createdAt,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -4551,20 +5243,32 @@ typedef $$EntityRelationsTableProcessedTableManager = ProcessedTableManager<
     PrefetchHooks Function()>;
 typedef $$TasksTableCreateCompanionBuilder = TasksCompanion Function({
   required String id,
-  required String userId,
+  required String ownerId,
   required String title,
   Value<String?> description,
-  Value<DateTime?> dueDate,
-  Value<bool> completed,
+  Value<DateTime?> startDate,
+  Value<DateTime?> endDate,
+  Value<String?> recurrenceRule,
+  Value<String?> reminderSettings,
+  Value<String> status,
+  Value<String?> linkedEntityId,
+  required DateTime createdAt,
+  required DateTime updatedAt,
   Value<int> rowid,
 });
 typedef $$TasksTableUpdateCompanionBuilder = TasksCompanion Function({
   Value<String> id,
-  Value<String> userId,
+  Value<String> ownerId,
   Value<String> title,
   Value<String?> description,
-  Value<DateTime?> dueDate,
-  Value<bool> completed,
+  Value<DateTime?> startDate,
+  Value<DateTime?> endDate,
+  Value<String?> recurrenceRule,
+  Value<String?> reminderSettings,
+  Value<String> status,
+  Value<String?> linkedEntityId,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
   Value<int> rowid,
 });
 
@@ -4579,8 +5283,8 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get title => $composableBuilder(
       column: $table.title, builder: (column) => ColumnFilters(column));
@@ -4588,11 +5292,32 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
   ColumnFilters<String> get description => $composableBuilder(
       column: $table.description, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<DateTime> get dueDate => $composableBuilder(
-      column: $table.dueDate, builder: (column) => ColumnFilters(column));
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+      column: $table.startDate, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<bool> get completed => $composableBuilder(
-      column: $table.completed, builder: (column) => ColumnFilters(column));
+  ColumnFilters<DateTime> get endDate => $composableBuilder(
+      column: $table.endDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get recurrenceRule => $composableBuilder(
+      column: $table.recurrenceRule,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get reminderSettings => $composableBuilder(
+      column: $table.reminderSettings,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get linkedEntityId => $composableBuilder(
+      column: $table.linkedEntityId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
 }
 
 class $$TasksTableOrderingComposer
@@ -4607,8 +5332,8 @@ class $$TasksTableOrderingComposer
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get title => $composableBuilder(
       column: $table.title, builder: (column) => ColumnOrderings(column));
@@ -4616,11 +5341,32 @@ class $$TasksTableOrderingComposer
   ColumnOrderings<String> get description => $composableBuilder(
       column: $table.description, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<DateTime> get dueDate => $composableBuilder(
-      column: $table.dueDate, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+      column: $table.startDate, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<bool> get completed => $composableBuilder(
-      column: $table.completed, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<DateTime> get endDate => $composableBuilder(
+      column: $table.endDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get recurrenceRule => $composableBuilder(
+      column: $table.recurrenceRule,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get reminderSettings => $composableBuilder(
+      column: $table.reminderSettings,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get linkedEntityId => $composableBuilder(
+      column: $table.linkedEntityId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 }
 
 class $$TasksTableAnnotationComposer
@@ -4635,8 +5381,8 @@ class $$TasksTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get userId =>
-      $composableBuilder(column: $table.userId, builder: (column) => column);
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
 
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
@@ -4644,11 +5390,29 @@ class $$TasksTableAnnotationComposer
   GeneratedColumn<String> get description => $composableBuilder(
       column: $table.description, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get dueDate =>
-      $composableBuilder(column: $table.dueDate, builder: (column) => column);
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
 
-  GeneratedColumn<bool> get completed =>
-      $composableBuilder(column: $table.completed, builder: (column) => column);
+  GeneratedColumn<DateTime> get endDate =>
+      $composableBuilder(column: $table.endDate, builder: (column) => column);
+
+  GeneratedColumn<String> get recurrenceRule => $composableBuilder(
+      column: $table.recurrenceRule, builder: (column) => column);
+
+  GeneratedColumn<String> get reminderSettings => $composableBuilder(
+      column: $table.reminderSettings, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get linkedEntityId => $composableBuilder(
+      column: $table.linkedEntityId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 
 class $$TasksTableTableManager extends RootTableManager<
@@ -4675,38 +5439,62 @@ class $$TasksTableTableManager extends RootTableManager<
               $$TasksTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
-            Value<String> userId = const Value.absent(),
+            Value<String> ownerId = const Value.absent(),
             Value<String> title = const Value.absent(),
             Value<String?> description = const Value.absent(),
-            Value<DateTime?> dueDate = const Value.absent(),
-            Value<bool> completed = const Value.absent(),
+            Value<DateTime?> startDate = const Value.absent(),
+            Value<DateTime?> endDate = const Value.absent(),
+            Value<String?> recurrenceRule = const Value.absent(),
+            Value<String?> reminderSettings = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<String?> linkedEntityId = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               TasksCompanion(
             id: id,
-            userId: userId,
+            ownerId: ownerId,
             title: title,
             description: description,
-            dueDate: dueDate,
-            completed: completed,
+            startDate: startDate,
+            endDate: endDate,
+            recurrenceRule: recurrenceRule,
+            reminderSettings: reminderSettings,
+            status: status,
+            linkedEntityId: linkedEntityId,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
-            required String userId,
+            required String ownerId,
             required String title,
             Value<String?> description = const Value.absent(),
-            Value<DateTime?> dueDate = const Value.absent(),
-            Value<bool> completed = const Value.absent(),
+            Value<DateTime?> startDate = const Value.absent(),
+            Value<DateTime?> endDate = const Value.absent(),
+            Value<String?> recurrenceRule = const Value.absent(),
+            Value<String?> reminderSettings = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<String?> linkedEntityId = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
             Value<int> rowid = const Value.absent(),
           }) =>
               TasksCompanion.insert(
             id: id,
-            userId: userId,
+            ownerId: ownerId,
             title: title,
             description: description,
-            dueDate: dueDate,
-            completed: completed,
+            startDate: startDate,
+            endDate: endDate,
+            recurrenceRule: recurrenceRule,
+            reminderSettings: reminderSettings,
+            status: status,
+            linkedEntityId: linkedEntityId,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -4731,17 +5519,31 @@ typedef $$TasksTableProcessedTableManager = ProcessedTableManager<
 typedef $$JournalEntriesTableCreateCompanionBuilder = JournalEntriesCompanion
     Function({
   required String id,
-  required String userId,
-  required DateTime date,
+  required String ownerId,
   required String content,
+  Value<DateTime?> startDate,
+  Value<DateTime?> endDate,
+  Value<String?> recurrenceRule,
+  Value<String?> reminderSettings,
+  Value<String?> status,
+  Value<String?> linkedEntityId,
+  required DateTime createdAt,
+  required DateTime updatedAt,
   Value<int> rowid,
 });
 typedef $$JournalEntriesTableUpdateCompanionBuilder = JournalEntriesCompanion
     Function({
   Value<String> id,
-  Value<String> userId,
-  Value<DateTime> date,
+  Value<String> ownerId,
   Value<String> content,
+  Value<DateTime?> startDate,
+  Value<DateTime?> endDate,
+  Value<String?> recurrenceRule,
+  Value<String?> reminderSettings,
+  Value<String?> status,
+  Value<String?> linkedEntityId,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
   Value<int> rowid,
 });
 
@@ -4757,14 +5559,38 @@ class $$JournalEntriesTableFilterComposer
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get date => $composableBuilder(
-      column: $table.date, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get content => $composableBuilder(
       column: $table.content, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+      column: $table.startDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get endDate => $composableBuilder(
+      column: $table.endDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get recurrenceRule => $composableBuilder(
+      column: $table.recurrenceRule,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get reminderSettings => $composableBuilder(
+      column: $table.reminderSettings,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get linkedEntityId => $composableBuilder(
+      column: $table.linkedEntityId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
 }
 
 class $$JournalEntriesTableOrderingComposer
@@ -4779,14 +5605,38 @@ class $$JournalEntriesTableOrderingComposer
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get date => $composableBuilder(
-      column: $table.date, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get content => $composableBuilder(
       column: $table.content, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+      column: $table.startDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get endDate => $composableBuilder(
+      column: $table.endDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get recurrenceRule => $composableBuilder(
+      column: $table.recurrenceRule,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get reminderSettings => $composableBuilder(
+      column: $table.reminderSettings,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get linkedEntityId => $composableBuilder(
+      column: $table.linkedEntityId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 }
 
 class $$JournalEntriesTableAnnotationComposer
@@ -4801,14 +5651,35 @@ class $$JournalEntriesTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get userId =>
-      $composableBuilder(column: $table.userId, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get date =>
-      $composableBuilder(column: $table.date, builder: (column) => column);
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
 
   GeneratedColumn<String> get content =>
       $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endDate =>
+      $composableBuilder(column: $table.endDate, builder: (column) => column);
+
+  GeneratedColumn<String> get recurrenceRule => $composableBuilder(
+      column: $table.recurrenceRule, builder: (column) => column);
+
+  GeneratedColumn<String> get reminderSettings => $composableBuilder(
+      column: $table.reminderSettings, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get linkedEntityId => $composableBuilder(
+      column: $table.linkedEntityId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 
 class $$JournalEntriesTableTableManager extends RootTableManager<
@@ -4839,30 +5710,58 @@ class $$JournalEntriesTableTableManager extends RootTableManager<
               $$JournalEntriesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
-            Value<String> userId = const Value.absent(),
-            Value<DateTime> date = const Value.absent(),
+            Value<String> ownerId = const Value.absent(),
             Value<String> content = const Value.absent(),
+            Value<DateTime?> startDate = const Value.absent(),
+            Value<DateTime?> endDate = const Value.absent(),
+            Value<String?> recurrenceRule = const Value.absent(),
+            Value<String?> reminderSettings = const Value.absent(),
+            Value<String?> status = const Value.absent(),
+            Value<String?> linkedEntityId = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               JournalEntriesCompanion(
             id: id,
-            userId: userId,
-            date: date,
+            ownerId: ownerId,
             content: content,
+            startDate: startDate,
+            endDate: endDate,
+            recurrenceRule: recurrenceRule,
+            reminderSettings: reminderSettings,
+            status: status,
+            linkedEntityId: linkedEntityId,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
-            required String userId,
-            required DateTime date,
+            required String ownerId,
             required String content,
+            Value<DateTime?> startDate = const Value.absent(),
+            Value<DateTime?> endDate = const Value.absent(),
+            Value<String?> recurrenceRule = const Value.absent(),
+            Value<String?> reminderSettings = const Value.absent(),
+            Value<String?> status = const Value.absent(),
+            Value<String?> linkedEntityId = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
             Value<int> rowid = const Value.absent(),
           }) =>
               JournalEntriesCompanion.insert(
             id: id,
-            userId: userId,
-            date: date,
+            ownerId: ownerId,
             content: content,
+            startDate: startDate,
+            endDate: endDate,
+            recurrenceRule: recurrenceRule,
+            reminderSettings: reminderSettings,
+            status: status,
+            linkedEntityId: linkedEntityId,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -4889,14 +5788,14 @@ typedef $$JournalEntriesTableProcessedTableManager = ProcessedTableManager<
     PrefetchHooks Function()>;
 typedef $$HabitsTableCreateCompanionBuilder = HabitsCompanion Function({
   required String id,
-  required String userId,
+  required String ownerId,
   required String name,
   Value<bool> completedToday,
   Value<int> rowid,
 });
 typedef $$HabitsTableUpdateCompanionBuilder = HabitsCompanion Function({
   Value<String> id,
-  Value<String> userId,
+  Value<String> ownerId,
   Value<String> name,
   Value<bool> completedToday,
   Value<int> rowid,
@@ -4914,8 +5813,8 @@ class $$HabitsTableFilterComposer
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnFilters(column));
@@ -4937,8 +5836,8 @@ class $$HabitsTableOrderingComposer
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnOrderings(column));
@@ -4960,8 +5859,8 @@ class $$HabitsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get userId =>
-      $composableBuilder(column: $table.userId, builder: (column) => column);
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
@@ -4994,28 +5893,28 @@ class $$HabitsTableTableManager extends RootTableManager<
               $$HabitsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
-            Value<String> userId = const Value.absent(),
+            Value<String> ownerId = const Value.absent(),
             Value<String> name = const Value.absent(),
             Value<bool> completedToday = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               HabitsCompanion(
             id: id,
-            userId: userId,
+            ownerId: ownerId,
             name: name,
             completedToday: completedToday,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
-            required String userId,
+            required String ownerId,
             required String name,
             Value<bool> completedToday = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               HabitsCompanion.insert(
             id: id,
-            userId: userId,
+            ownerId: ownerId,
             name: name,
             completedToday: completedToday,
             rowid: rowid,
@@ -5041,14 +5940,14 @@ typedef $$HabitsTableProcessedTableManager = ProcessedTableManager<
     PrefetchHooks Function()>;
 typedef $$ProjectsTableCreateCompanionBuilder = ProjectsCompanion Function({
   required String id,
-  required String userId,
+  required String ownerId,
   required String title,
   Value<String?> status,
   Value<int> rowid,
 });
 typedef $$ProjectsTableUpdateCompanionBuilder = ProjectsCompanion Function({
   Value<String> id,
-  Value<String> userId,
+  Value<String> ownerId,
   Value<String> title,
   Value<String?> status,
   Value<int> rowid,
@@ -5066,8 +5965,8 @@ class $$ProjectsTableFilterComposer
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get title => $composableBuilder(
       column: $table.title, builder: (column) => ColumnFilters(column));
@@ -5088,8 +5987,8 @@ class $$ProjectsTableOrderingComposer
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get title => $composableBuilder(
       column: $table.title, builder: (column) => ColumnOrderings(column));
@@ -5110,8 +6009,8 @@ class $$ProjectsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get userId =>
-      $composableBuilder(column: $table.userId, builder: (column) => column);
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
 
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
@@ -5144,28 +6043,28 @@ class $$ProjectsTableTableManager extends RootTableManager<
               $$ProjectsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
-            Value<String> userId = const Value.absent(),
+            Value<String> ownerId = const Value.absent(),
             Value<String> title = const Value.absent(),
             Value<String?> status = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ProjectsCompanion(
             id: id,
-            userId: userId,
+            ownerId: ownerId,
             title: title,
             status: status,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
-            required String userId,
+            required String ownerId,
             required String title,
             Value<String?> status = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ProjectsCompanion.insert(
             id: id,
-            userId: userId,
+            ownerId: ownerId,
             title: title,
             status: status,
             rowid: rowid,
@@ -5192,7 +6091,7 @@ typedef $$ProjectsTableProcessedTableManager = ProcessedTableManager<
 typedef $$FinanceRecordsTableCreateCompanionBuilder = FinanceRecordsCompanion
     Function({
   required String id,
-  required String userId,
+  required String ownerId,
   required double amount,
   Value<String?> category,
   required DateTime date,
@@ -5201,7 +6100,7 @@ typedef $$FinanceRecordsTableCreateCompanionBuilder = FinanceRecordsCompanion
 typedef $$FinanceRecordsTableUpdateCompanionBuilder = FinanceRecordsCompanion
     Function({
   Value<String> id,
-  Value<String> userId,
+  Value<String> ownerId,
   Value<double> amount,
   Value<String?> category,
   Value<DateTime> date,
@@ -5220,8 +6119,8 @@ class $$FinanceRecordsTableFilterComposer
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get amount => $composableBuilder(
       column: $table.amount, builder: (column) => ColumnFilters(column));
@@ -5245,8 +6144,8 @@ class $$FinanceRecordsTableOrderingComposer
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<double> get amount => $composableBuilder(
       column: $table.amount, builder: (column) => ColumnOrderings(column));
@@ -5270,8 +6169,8 @@ class $$FinanceRecordsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get userId =>
-      $composableBuilder(column: $table.userId, builder: (column) => column);
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
 
   GeneratedColumn<double> get amount =>
       $composableBuilder(column: $table.amount, builder: (column) => column);
@@ -5311,7 +6210,7 @@ class $$FinanceRecordsTableTableManager extends RootTableManager<
               $$FinanceRecordsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
-            Value<String> userId = const Value.absent(),
+            Value<String> ownerId = const Value.absent(),
             Value<double> amount = const Value.absent(),
             Value<String?> category = const Value.absent(),
             Value<DateTime> date = const Value.absent(),
@@ -5319,7 +6218,7 @@ class $$FinanceRecordsTableTableManager extends RootTableManager<
           }) =>
               FinanceRecordsCompanion(
             id: id,
-            userId: userId,
+            ownerId: ownerId,
             amount: amount,
             category: category,
             date: date,
@@ -5327,7 +6226,7 @@ class $$FinanceRecordsTableTableManager extends RootTableManager<
           ),
           createCompanionCallback: ({
             required String id,
-            required String userId,
+            required String ownerId,
             required double amount,
             Value<String?> category = const Value.absent(),
             required DateTime date,
@@ -5335,7 +6234,7 @@ class $$FinanceRecordsTableTableManager extends RootTableManager<
           }) =>
               FinanceRecordsCompanion.insert(
             id: id,
-            userId: userId,
+            ownerId: ownerId,
             amount: amount,
             category: category,
             date: date,
@@ -5366,7 +6265,7 @@ typedef $$FinanceRecordsTableProcessedTableManager = ProcessedTableManager<
 typedef $$HealthRecordsTableCreateCompanionBuilder = HealthRecordsCompanion
     Function({
   required String id,
-  required String userId,
+  required String ownerId,
   required String type,
   Value<String?> value,
   required DateTime date,
@@ -5375,7 +6274,7 @@ typedef $$HealthRecordsTableCreateCompanionBuilder = HealthRecordsCompanion
 typedef $$HealthRecordsTableUpdateCompanionBuilder = HealthRecordsCompanion
     Function({
   Value<String> id,
-  Value<String> userId,
+  Value<String> ownerId,
   Value<String> type,
   Value<String?> value,
   Value<DateTime> date,
@@ -5394,8 +6293,8 @@ class $$HealthRecordsTableFilterComposer
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get type => $composableBuilder(
       column: $table.type, builder: (column) => ColumnFilters(column));
@@ -5419,8 +6318,8 @@ class $$HealthRecordsTableOrderingComposer
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get type => $composableBuilder(
       column: $table.type, builder: (column) => ColumnOrderings(column));
@@ -5444,8 +6343,8 @@ class $$HealthRecordsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get userId =>
-      $composableBuilder(column: $table.userId, builder: (column) => column);
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
 
   GeneratedColumn<String> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
@@ -5484,7 +6383,7 @@ class $$HealthRecordsTableTableManager extends RootTableManager<
               $$HealthRecordsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
-            Value<String> userId = const Value.absent(),
+            Value<String> ownerId = const Value.absent(),
             Value<String> type = const Value.absent(),
             Value<String?> value = const Value.absent(),
             Value<DateTime> date = const Value.absent(),
@@ -5492,7 +6391,7 @@ class $$HealthRecordsTableTableManager extends RootTableManager<
           }) =>
               HealthRecordsCompanion(
             id: id,
-            userId: userId,
+            ownerId: ownerId,
             type: type,
             value: value,
             date: date,
@@ -5500,7 +6399,7 @@ class $$HealthRecordsTableTableManager extends RootTableManager<
           ),
           createCompanionCallback: ({
             required String id,
-            required String userId,
+            required String ownerId,
             required String type,
             Value<String?> value = const Value.absent(),
             required DateTime date,
@@ -5508,7 +6407,7 @@ class $$HealthRecordsTableTableManager extends RootTableManager<
           }) =>
               HealthRecordsCompanion.insert(
             id: id,
-            userId: userId,
+            ownerId: ownerId,
             type: type,
             value: value,
             date: date,
@@ -5539,7 +6438,7 @@ typedef $$HealthRecordsTableProcessedTableManager = ProcessedTableManager<
 typedef $$MenstruationCyclesTableCreateCompanionBuilder
     = MenstruationCyclesCompanion Function({
   required String id,
-  required String userId,
+  required String ownerId,
   required DateTime startDate,
   Value<DateTime?> endDate,
   Value<int> rowid,
@@ -5547,7 +6446,7 @@ typedef $$MenstruationCyclesTableCreateCompanionBuilder
 typedef $$MenstruationCyclesTableUpdateCompanionBuilder
     = MenstruationCyclesCompanion Function({
   Value<String> id,
-  Value<String> userId,
+  Value<String> ownerId,
   Value<DateTime> startDate,
   Value<DateTime?> endDate,
   Value<int> rowid,
@@ -5565,8 +6464,8 @@ class $$MenstruationCyclesTableFilterComposer
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get startDate => $composableBuilder(
       column: $table.startDate, builder: (column) => ColumnFilters(column));
@@ -5587,8 +6486,8 @@ class $$MenstruationCyclesTableOrderingComposer
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get startDate => $composableBuilder(
       column: $table.startDate, builder: (column) => ColumnOrderings(column));
@@ -5609,8 +6508,8 @@ class $$MenstruationCyclesTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get userId =>
-      $composableBuilder(column: $table.userId, builder: (column) => column);
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
 
   GeneratedColumn<DateTime> get startDate =>
       $composableBuilder(column: $table.startDate, builder: (column) => column);
@@ -5648,28 +6547,28 @@ class $$MenstruationCyclesTableTableManager extends RootTableManager<
                   $db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
-            Value<String> userId = const Value.absent(),
+            Value<String> ownerId = const Value.absent(),
             Value<DateTime> startDate = const Value.absent(),
             Value<DateTime?> endDate = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               MenstruationCyclesCompanion(
             id: id,
-            userId: userId,
+            ownerId: ownerId,
             startDate: startDate,
             endDate: endDate,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
-            required String userId,
+            required String ownerId,
             required DateTime startDate,
             Value<DateTime?> endDate = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               MenstruationCyclesCompanion.insert(
             id: id,
-            userId: userId,
+            ownerId: ownerId,
             startDate: startDate,
             endDate: endDate,
             rowid: rowid,
@@ -5699,7 +6598,7 @@ typedef $$MenstruationCyclesTableProcessedTableManager = ProcessedTableManager<
 typedef $$NutritionEntriesTableCreateCompanionBuilder
     = NutritionEntriesCompanion Function({
   required String id,
-  required String userId,
+  required String ownerId,
   required String meal,
   Value<String?> notes,
   required DateTime date,
@@ -5708,7 +6607,7 @@ typedef $$NutritionEntriesTableCreateCompanionBuilder
 typedef $$NutritionEntriesTableUpdateCompanionBuilder
     = NutritionEntriesCompanion Function({
   Value<String> id,
-  Value<String> userId,
+  Value<String> ownerId,
   Value<String> meal,
   Value<String?> notes,
   Value<DateTime> date,
@@ -5727,8 +6626,8 @@ class $$NutritionEntriesTableFilterComposer
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get meal => $composableBuilder(
       column: $table.meal, builder: (column) => ColumnFilters(column));
@@ -5752,8 +6651,8 @@ class $$NutritionEntriesTableOrderingComposer
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get userId => $composableBuilder(
-      column: $table.userId, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get meal => $composableBuilder(
       column: $table.meal, builder: (column) => ColumnOrderings(column));
@@ -5777,8 +6676,8 @@ class $$NutritionEntriesTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get userId =>
-      $composableBuilder(column: $table.userId, builder: (column) => column);
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
 
   GeneratedColumn<String> get meal =>
       $composableBuilder(column: $table.meal, builder: (column) => column);
@@ -5818,7 +6717,7 @@ class $$NutritionEntriesTableTableManager extends RootTableManager<
               $$NutritionEntriesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
-            Value<String> userId = const Value.absent(),
+            Value<String> ownerId = const Value.absent(),
             Value<String> meal = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<DateTime> date = const Value.absent(),
@@ -5826,7 +6725,7 @@ class $$NutritionEntriesTableTableManager extends RootTableManager<
           }) =>
               NutritionEntriesCompanion(
             id: id,
-            userId: userId,
+            ownerId: ownerId,
             meal: meal,
             notes: notes,
             date: date,
@@ -5834,7 +6733,7 @@ class $$NutritionEntriesTableTableManager extends RootTableManager<
           ),
           createCompanionCallback: ({
             required String id,
-            required String userId,
+            required String ownerId,
             required String meal,
             Value<String?> notes = const Value.absent(),
             required DateTime date,
@@ -5842,7 +6741,7 @@ class $$NutritionEntriesTableTableManager extends RootTableManager<
           }) =>
               NutritionEntriesCompanion.insert(
             id: id,
-            userId: userId,
+            ownerId: ownerId,
             meal: meal,
             notes: notes,
             date: date,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-// import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:pluc/l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers/app_providers.dart';
 
@@ -8,7 +8,7 @@ class CalendarScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // final strings = AppLocalizations.of(context)!;
+    final strings = AppLocalizations.of(context)!;
     final (start, end) = ref.watch(selectedDateRangeProvider);
     final calendarItems = ref.watch(calendarItemsProvider);
     final dummyTasks = ref.watch(dummyTasksProvider);
@@ -63,8 +63,8 @@ class CalendarScreen extends ConsumerWidget {
               ];
 
               if (allItems.isEmpty) {
-                return const Center(
-                  child: Text('No events this week'),
+                return Center(
+                  child: Text(strings.noEventsThisWeek),
                 );
               }
 
@@ -131,7 +131,7 @@ class CalendarScreen extends ConsumerWidget {
             },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, stack) => Center(
-              child: Text('Error: $error'),
+              child: Text('${strings.error}: $error'),
             ),
           ),
         ),

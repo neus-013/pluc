@@ -1,7 +1,23 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pluc/core/entities.dart';
+import 'package:pluc/core/domain/entities/user.dart';
 import 'package:pluc/core/services/preset_service.dart';
 import 'package:pluc/core/providers.dart';
+
+// ============================================================================
+// USER STATE
+// ============================================================================
+
+/// Tracks the currently authenticated user
+/// Null when no user is logged in
+final currentUserProvider = StateProvider<User?>((ref) => null);
+
+/// Tracks the current user's password length (for UI display only)
+final passwordLengthProvider = StateProvider<int>((ref) => 0);
+
+/// Tracks the current app locale
+final localeProvider = StateProvider<Locale>((ref) => const Locale('en'));
 
 // ============================================================================
 // MODULE STATE
@@ -121,9 +137,10 @@ final calendarItemsProvider = FutureProvider<List<dynamic>>((ref) async {
   final calendarRepo = ref.read(calendarRepositoryProvider);
   final (start, end) = ref.watch(selectedDateRangeProvider);
   final enabledModules = ref.watch(enabledModulesProvider);
+  final userId = ref.watch(currentUserIdProvider);
 
   try {
-    final items = await calendarRepo.getSchedulableItems(start, end);
+    final items = await calendarRepo.getSchedulableItems(userId, start, end);
 
     // Filter by enabled modules
     return items
@@ -139,9 +156,11 @@ final calendarItemsProvider = FutureProvider<List<dynamic>>((ref) async {
 // CREATE ENTRY STATE
 // ============================================================================
 
+/// Provides the current user ID for entity creation
+/// Returns the authenticated user's ID or a default value if not logged in
 final currentUserIdProvider = Provider<String>((ref) {
-  // TODO: Get from auth
-  return 'user_default';
+  final user = ref.watch(currentUserProvider);
+  return user?.id ?? 'user_default';
 });
 
 final dummyTasksProvider = StateProvider<List<dynamic>>((ref) {

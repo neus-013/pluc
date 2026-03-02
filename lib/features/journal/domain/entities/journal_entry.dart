@@ -26,7 +26,7 @@ class JournalEntry extends BaseEntity implements SchedulableEntity {
     required String id,
     required DateTime createdAt,
     required DateTime updatedAt,
-    required String userId,
+    required String ownerId,
     required String moduleSource,
     required this.content,
     Visibility visibility = Visibility.normal,
@@ -37,20 +37,20 @@ class JournalEntry extends BaseEntity implements SchedulableEntity {
     this.status,
     this.linkedEntityId,
   }) : super(
-    id: id,
-    createdAt: createdAt,
-    updatedAt: updatedAt,
-    userId: userId,
-    moduleSource: moduleSource,
-    visibility: visibility,
-  );
+          id: id,
+          createdAt: createdAt,
+          updatedAt: updatedAt,
+          ownerId: ownerId,
+          moduleSource: moduleSource,
+          visibility: visibility,
+        );
 
   @override
   JournalEntry copyWith({
     String? id,
     DateTime? createdAt,
     DateTime? updatedAt,
-    String? userId,
+    String? ownerId,
     String? moduleSource,
     Visibility? visibility,
     String? content,
@@ -65,7 +65,7 @@ class JournalEntry extends BaseEntity implements SchedulableEntity {
       id: id ?? this.id,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      userId: userId ?? this.userId,
+      ownerId: ownerId ?? this.ownerId,
       moduleSource: moduleSource ?? this.moduleSource,
       visibility: visibility ?? this.visibility,
       content: content ?? this.content,

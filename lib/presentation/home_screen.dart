@@ -23,14 +23,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final enabledModules = ref.watch(enabledModulesProvider);
 
     return Scaffold(
+      key: const Key('home_scaffold'),
       appBar: AppBar(
         title: Text(_getTitle(_currentView, strings)),
       ),
       drawer: Drawer(
+        key: const Key('home_drawer'),
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
+              key: const Key('drawer_header'),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.primaryContainer,
               ),
@@ -58,6 +61,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             // Calendar is always visible (aggregates all modules)
             ListTile(
+              key: const Key('drawer_calendar'),
               leading: const Icon(Icons.calendar_today),
               title: Text(strings.calendar),
               selected: _currentView == 'calendar',
@@ -72,6 +76,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             // Show only enabled modules
             if (enabledModules['tasks'] == true)
               ListTile(
+                key: const Key('drawer_tasks'),
                 leading: const Icon(Icons.check_box),
                 title: Text(strings.tasks),
                 selected: _currentView == 'tasks',
@@ -84,6 +89,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             if (enabledModules['journal'] == true)
               ListTile(
+                key: const Key('drawer_journal'),
                 leading: const Icon(Icons.book),
                 title: Text(strings.journal),
                 selected: _currentView == 'journal',
@@ -96,8 +102,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             if (enabledModules['habits'] == true)
               ListTile(
+                key: const Key('drawer_habits'),
                 leading: const Icon(Icons.repeat),
-                title: const Text('Habits'),
+                title: Text(strings.habits),
                 selected: _currentView == 'habits',
                 onTap: () {
                   setState(() {
@@ -108,8 +115,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             if (enabledModules['health'] == true)
               ListTile(
+                key: const Key('drawer_health'),
                 leading: const Icon(Icons.fitness_center),
-                title: const Text('Health'),
+                title: Text(strings.health),
                 selected: _currentView == 'health',
                 onTap: () {
                   setState(() {
@@ -120,8 +128,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             if (enabledModules['finance'] == true)
               ListTile(
+                key: const Key('drawer_finance'),
                 leading: const Icon(Icons.attach_money),
-                title: const Text('Finance'),
+                title: Text(strings.finance),
                 selected: _currentView == 'finance',
                 onTap: () {
                   setState(() {
@@ -132,8 +141,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             if (enabledModules['nutrition'] == true)
               ListTile(
+                key: const Key('drawer_nutrition'),
                 leading: const Icon(Icons.restaurant),
-                title: const Text('Nutrition'),
+                title: Text(strings.nutrition),
                 selected: _currentView == 'nutrition',
                 onTap: () {
                   setState(() {
@@ -144,8 +154,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             if (enabledModules['menstruation'] == true)
               ListTile(
+                key: const Key('drawer_menstruation'),
                 leading: const Icon(Icons.favorite),
-                title: const Text('Menstruation'),
+                title: Text(strings.menstruation),
                 selected: _currentView == 'menstruation',
                 onTap: () {
                   setState(() {
@@ -156,6 +167,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             const Divider(),
             ListTile(
+              key: const Key('drawer_settings'),
               leading: const Icon(Icons.settings),
               title: Text(strings.settings),
               selected: _currentView == 'settings',
@@ -195,6 +207,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildPlaceholder(String moduleName) {
+    final strings = AppLocalizations.of(context)!;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -210,7 +223,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 8),
-          const Text('Coming soon...'),
+          Text(strings.comingSoon),
         ],
       ),
     );
