@@ -152,9 +152,11 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                                         ),
                                       ),
                                     IconButton(
-                                      icon: Icon(Icons.delete, color: Colors.red),
+                                      icon:
+                                          Icon(Icons.delete, color: Colors.red),
                                       onPressed: () async {
-                                        final confirmed = await showDialog<bool>(
+                                        final confirmed =
+                                            await showDialog<bool>(
                                           context: context,
                                           builder: (context) => AlertDialog(
                                             title: Text('Delete Entry'),
@@ -162,13 +164,13 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                                                 'Are you sure you want to delete this journal entry?'),
                                             actions: [
                                               TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(context, false),
+                                                onPressed: () => Navigator.pop(
+                                                    context, false),
                                                 child: Text('Cancel'),
                                               ),
                                               TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(context, true),
+                                                onPressed: () => Navigator.pop(
+                                                    context, true),
                                                 child: Text('Delete',
                                                     style: TextStyle(
                                                         color: Colors.red)),
@@ -186,7 +188,8 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                                               ScaffoldMessenger.of(context)
                                                   .showSnackBar(
                                                 SnackBar(
-                                                  content: Text('Entry deleted'),
+                                                  content:
+                                                      Text('Entry deleted'),
                                                   backgroundColor: Colors.green,
                                                 ),
                                               );

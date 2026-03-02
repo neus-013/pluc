@@ -191,8 +191,7 @@ class _TaskScreenState extends ConsumerState<TaskScreen> {
                                             ScaffoldMessenger.of(context)
                                                 .showSnackBar(
                                               SnackBar(
-                                                content:
-                                                    Text('Task deleted'),
+                                                content: Text('Task deleted'),
                                                 backgroundColor: Colors.green,
                                               ),
                                             );
