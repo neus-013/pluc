@@ -11,6 +11,7 @@ enum EntityType {
   healthRecord,
   menstruationCycle,
   nutritionEntry,
+  calendarEvent,
   custom,
 }
 

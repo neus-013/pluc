@@ -61,5 +61,12 @@
   "markPending": "Mark pending",
   "taskUpdated": "Task updated!",
   "journalEntryUpdated": "Entry updated!",
-  "dueDate": "Due date"
+  "dueDate": "Due date",
+  "newEvent": "New Event",
+  "editEvent": "Edit Event",
+  "eventCreated": "Event created!",
+  "eventUpdated": "Event updated!",
+  "selectDate": "Select date",
+  "selectTime": "Select time",
+  "events": "Events"
 }

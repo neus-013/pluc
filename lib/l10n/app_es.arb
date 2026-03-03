@@ -61,5 +61,12 @@
   "markPending": "Marcar pendiente",
   "taskUpdated": "¡Tarea actualizada!",
   "journalEntryUpdated": "¡Entrada actualizada!",
-  "dueDate": "Fecha de vencimiento"
+  "dueDate": "Fecha de vencimiento",
+  "newEvent": "Nuevo evento",
+  "editEvent": "Editar evento",
+  "eventCreated": "¡Evento creado!",
+  "eventUpdated": "¡Evento actualizado!",
+  "selectDate": "Seleccionar fecha",
+  "selectTime": "Seleccionar hora",
+  "events": "Eventos"
 }

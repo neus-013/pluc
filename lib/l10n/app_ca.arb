@@ -61,5 +61,12 @@
   "markPending": "Marcar pendent",
   "taskUpdated": "Tasca actualitzada!",
   "journalEntryUpdated": "Entrada actualitzada!",
-  "dueDate": "Data de venciment"
+  "dueDate": "Data de venciment",
+  "newEvent": "Nou esdeveniment",
+  "editEvent": "Editar esdeveniment",
+  "eventCreated": "Esdeveniment creat!",
+  "eventUpdated": "Esdeveniment actualitzat!",
+  "selectDate": "Seleccionar data",
+  "selectTime": "Seleccionar hora",
+  "events": "Esdeveniments"
 }

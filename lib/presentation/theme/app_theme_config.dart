@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pluc/core/domain/entities/task.dart';
 import 'package:pluc/features/journal/domain/entities/journal_entry.dart';
+import 'package:pluc/features/calendar/domain/entities/calendar_event.dart';
 import 'package:pluc/core/entities.dart';
 import 'package:pluc/features/calendar/domain/repositories/calendar_repository.dart';
 import 'package:pluc/presentation/providers/app_providers.dart'
@@ -78,6 +79,12 @@ abstract class AppThemeConfig {
   Future<JournalEntry?> showJournalDialog({
     required BuildContext context,
     JournalEntry? existingEntry,
+  });
+
+  Future<CalendarEvent?> showEventDialog({
+    required BuildContext context,
+    CalendarEvent? existingEvent,
+    DateTime? initialDate,
   });
 
   // FAB for creating new items
@@ -249,6 +256,7 @@ abstract class _BaseThemeConfig implements AppThemeConfig {
           : Icons.check_circle_outline;
     }
     if (item is JournalEntry) return Icons.menu_book_outlined;
+    if (item is CalendarEvent) return Icons.event;
     if (item is SchedulableItem) {
       if (item.moduleSource == 'tasks') {
         return item.status == 'completed'
@@ -256,6 +264,7 @@ abstract class _BaseThemeConfig implements AppThemeConfig {
             : Icons.check_circle_outline;
       }
       if (item.moduleSource == 'journal') return Icons.menu_book_outlined;
+      if (item.moduleSource == 'events') return Icons.event;
     }
     return Icons.event_note;
   }
@@ -263,6 +272,7 @@ abstract class _BaseThemeConfig implements AppThemeConfig {
   String titleForItem(SchedulableEntity item) {
     if (item is Task) return item.title;
     if (item is JournalEntry) return item.content;
+    if (item is CalendarEvent) return item.title;
     if (item is SchedulableItem) return item.title;
     return 'Event';
   }
@@ -1111,6 +1121,9 @@ class ModernMinimalTheme extends _BaseThemeConfig {
     final descCtrl =
         TextEditingController(text: existingTask?.description ?? '');
     DateTime? selectedDate = existingTask?.startDate;
+    TimeOfDay? selectedTime = existingTask?.startDate != null
+        ? TimeOfDay.fromDateTime(existingTask!.startDate!)
+        : null;
 
     return showDialog<Task>(
       context: context,
@@ -1163,6 +1176,24 @@ class ModernMinimalTheme extends _BaseThemeConfig {
                     }
                   },
                 ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.access_time, size: 18),
+                  label: Text(
+                    selectedTime == null
+                        ? 'Select time'
+                        : '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
+                  ),
+                  onPressed: () async {
+                    final picked = await showTimePicker(
+                      context: ctx,
+                      initialTime: selectedTime ?? TimeOfDay.now(),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedTime = picked);
+                    }
+                  },
+                ),
               ],
             ),
           ),
@@ -1175,13 +1206,23 @@ class ModernMinimalTheme extends _BaseThemeConfig {
               onPressed: () {
                 if (titleCtrl.text.trim().isEmpty) return;
                 final now = DateTime.now();
+                DateTime? finalStart = selectedDate;
+                if (finalStart != null && selectedTime != null) {
+                  finalStart = DateTime(
+                    finalStart.year,
+                    finalStart.month,
+                    finalStart.day,
+                    selectedTime!.hour,
+                    selectedTime!.minute,
+                  );
+                }
                 final result = existingTask != null
                     ? existingTask.copyWith(
                         title: titleCtrl.text.trim(),
                         description: descCtrl.text.trim().isEmpty
                             ? null
                             : descCtrl.text.trim(),
-                        startDate: selectedDate,
+                        startDate: finalStart,
                         updatedAt: now,
                       )
                     : Task(
@@ -1194,7 +1235,7 @@ class ModernMinimalTheme extends _BaseThemeConfig {
                         description: descCtrl.text.trim().isEmpty
                             ? null
                             : descCtrl.text.trim(),
-                        startDate: selectedDate,
+                        startDate: finalStart,
                         status: 'pending',
                       );
                 Navigator.pop(ctx, result);
@@ -1267,6 +1308,146 @@ class ModernMinimalTheme extends _BaseThemeConfig {
             child: Text(existingEntry == null ? 'Create' : 'Save'),
           ),
         ],
+      ),
+    );
+  }
+
+  @override
+  Future<CalendarEvent?> showEventDialog({
+    required BuildContext context,
+    CalendarEvent? existingEvent,
+    DateTime? initialDate,
+  }) {
+    final titleCtrl = TextEditingController(text: existingEvent?.title ?? '');
+    final descCtrl =
+        TextEditingController(text: existingEvent?.description ?? '');
+    DateTime? selectedDate = existingEvent?.startDate ?? initialDate;
+    TimeOfDay? selectedTime = existingEvent?.startDate != null
+        ? TimeOfDay.fromDateTime(existingEvent!.startDate!)
+        : null;
+
+    return showDialog<CalendarEvent>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: Colors.white,
+          title: Text(
+            existingEvent == null ? 'New Event' : 'Edit Event',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Title',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descCtrl,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.calendar_today, size: 18),
+                  label: Text(
+                    selectedDate == null
+                        ? 'Select date'
+                        : formatDate(selectedDate!),
+                  ),
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: selectedDate ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedDate = picked);
+                    }
+                  },
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.access_time, size: 18),
+                  label: Text(
+                    selectedTime == null
+                        ? 'Select time'
+                        : '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
+                  ),
+                  onPressed: () async {
+                    final picked = await showTimePicker(
+                      context: ctx,
+                      initialTime: selectedTime ?? TimeOfDay.now(),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedTime = picked);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (titleCtrl.text.trim().isEmpty) return;
+                final now = DateTime.now();
+                DateTime? finalStart = selectedDate;
+                if (finalStart != null && selectedTime != null) {
+                  finalStart = DateTime(
+                    finalStart.year,
+                    finalStart.month,
+                    finalStart.day,
+                    selectedTime!.hour,
+                    selectedTime!.minute,
+                  );
+                }
+                final result = existingEvent != null
+                    ? existingEvent.copyWith(
+                        title: titleCtrl.text.trim(),
+                        description: descCtrl.text.trim().isEmpty
+                            ? null
+                            : descCtrl.text.trim(),
+                        startDate: finalStart,
+                        updatedAt: now,
+                      )
+                    : CalendarEvent(
+                        id: '',
+                        createdAt: now,
+                        updatedAt: now,
+                        ownerId: '',
+                        moduleSource: 'events',
+                        title: titleCtrl.text.trim(),
+                        description: descCtrl.text.trim().isEmpty
+                            ? null
+                            : descCtrl.text.trim(),
+                        startDate: finalStart,
+                        status: 'active',
+                      );
+                Navigator.pop(ctx, result);
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF6C8EBF),
+              ),
+              child: Text(existingEvent == null ? 'Create' : 'Save'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2214,6 +2395,9 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
     final descCtrl =
         TextEditingController(text: existingTask?.description ?? '');
     DateTime? selectedDate = existingTask?.startDate;
+    TimeOfDay? selectedTime = existingTask?.startDate != null
+        ? TimeOfDay.fromDateTime(existingTask!.startDate!)
+        : null;
 
     return showDialog<Task>(
       context: context,
@@ -2284,6 +2468,31 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
                     }
                   },
                 ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.access_time,
+                      size: 18, color: Color(0xFFB57F50)),
+                  label: Text(
+                    selectedTime == null
+                        ? 'Select time'
+                        : '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
+                    style: const TextStyle(color: Color(0xFF6D4C41)),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFC39A7A)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: () async {
+                    final picked = await showTimePicker(
+                      context: ctx,
+                      initialTime: selectedTime ?? TimeOfDay.now(),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedTime = picked);
+                    }
+                  },
+                ),
               ],
             ),
           ),
@@ -2297,13 +2506,23 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
               onPressed: () {
                 if (titleCtrl.text.trim().isEmpty) return;
                 final now = DateTime.now();
+                DateTime? finalStart = selectedDate;
+                if (finalStart != null && selectedTime != null) {
+                  finalStart = DateTime(
+                    finalStart.year,
+                    finalStart.month,
+                    finalStart.day,
+                    selectedTime!.hour,
+                    selectedTime!.minute,
+                  );
+                }
                 final result = existingTask != null
                     ? existingTask.copyWith(
                         title: titleCtrl.text.trim(),
                         description: descCtrl.text.trim().isEmpty
                             ? null
                             : descCtrl.text.trim(),
-                        startDate: selectedDate,
+                        startDate: finalStart,
                         updatedAt: now,
                       )
                     : Task(
@@ -2316,7 +2535,7 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
                         description: descCtrl.text.trim().isEmpty
                             ? null
                             : descCtrl.text.trim(),
-                        startDate: selectedDate,
+                        startDate: finalStart,
                         status: 'pending',
                       );
                 Navigator.pop(ctx, result);
@@ -2401,6 +2620,174 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
             child: Text(existingEntry == null ? 'Create' : 'Save'),
           ),
         ],
+      ),
+    );
+  }
+
+  @override
+  Future<CalendarEvent?> showEventDialog({
+    required BuildContext context,
+    CalendarEvent? existingEvent,
+    DateTime? initialDate,
+  }) {
+    final titleCtrl = TextEditingController(text: existingEvent?.title ?? '');
+    final descCtrl =
+        TextEditingController(text: existingEvent?.description ?? '');
+    DateTime? selectedDate = existingEvent?.startDate ?? initialDate;
+    TimeOfDay? selectedTime = existingEvent?.startDate != null
+        ? TimeOfDay.fromDateTime(existingEvent!.startDate!)
+        : null;
+
+    return showDialog<CalendarEvent>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: const Color(0xFFFFFCF5),
+          title: Text(
+            existingEvent == null ? 'New Event' : 'Edit Event',
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF5D4037),
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Title',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFFFF7EC),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descCtrl,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFFFF7EC),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.calendar_today,
+                      size: 18, color: Color(0xFFB57F50)),
+                  label: Text(
+                    selectedDate == null
+                        ? 'Select date'
+                        : formatDate(selectedDate!),
+                    style: const TextStyle(color: Color(0xFF6D4C41)),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFC39A7A)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: selectedDate ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedDate = picked);
+                    }
+                  },
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.access_time,
+                      size: 18, color: Color(0xFFB57F50)),
+                  label: Text(
+                    selectedTime == null
+                        ? 'Select time'
+                        : '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
+                    style: const TextStyle(color: Color(0xFF6D4C41)),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFC39A7A)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: () async {
+                    final picked = await showTimePicker(
+                      context: ctx,
+                      initialTime: selectedTime ?? TimeOfDay.now(),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedTime = picked);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel',
+                  style: TextStyle(color: Color(0xFF8D6E63))),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (titleCtrl.text.trim().isEmpty) return;
+                final now = DateTime.now();
+                DateTime? finalStart = selectedDate;
+                if (finalStart != null && selectedTime != null) {
+                  finalStart = DateTime(
+                    finalStart.year,
+                    finalStart.month,
+                    finalStart.day,
+                    selectedTime!.hour,
+                    selectedTime!.minute,
+                  );
+                }
+                final result = existingEvent != null
+                    ? existingEvent.copyWith(
+                        title: titleCtrl.text.trim(),
+                        description: descCtrl.text.trim().isEmpty
+                            ? null
+                            : descCtrl.text.trim(),
+                        startDate: finalStart,
+                        updatedAt: now,
+                      )
+                    : CalendarEvent(
+                        id: '',
+                        createdAt: now,
+                        updatedAt: now,
+                        ownerId: '',
+                        moduleSource: 'events',
+                        title: titleCtrl.text.trim(),
+                        description: descCtrl.text.trim().isEmpty
+                            ? null
+                            : descCtrl.text.trim(),
+                        startDate: finalStart,
+                        status: 'active',
+                      );
+                Navigator.pop(ctx, result);
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFB08968),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Text(existingEvent == null ? 'Create' : 'Save'),
+            ),
+          ],
+        ),
       ),
     );
   }

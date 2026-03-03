@@ -2,6 +2,7 @@ import 'package:pluc/core/domain/repositories/task_repository.dart';
 import 'package:pluc/core/entities.dart';
 import 'package:pluc/features/journal/domain/repositories/journal_repository.dart';
 import 'package:pluc/features/calendar/domain/repositories/calendar_repository.dart';
+import 'package:pluc/features/calendar/domain/repositories/calendar_event_repository.dart';
 
 /// Implementation of CalendarRepository that aggregates from other module repositories.
 /// Never accesses the database directly; uses abstractions.
@@ -9,10 +10,12 @@ import 'package:pluc/features/calendar/domain/repositories/calendar_repository.d
 class CalendarRepositoryImpl implements CalendarRepository {
   final TaskRepository taskRepository;
   final JournalRepository journalRepository;
+  final CalendarEventRepository calendarEventRepository;
 
   CalendarRepositoryImpl({
     required this.taskRepository,
     required this.journalRepository,
+    required this.calendarEventRepository,
   });
 
   @override
@@ -49,6 +52,24 @@ class CalendarRepositoryImpl implements CalendarRepository {
             endDate: entry.endDate,
             entityType: EntityType.journalEntry,
             metadata: {'content': entry.content, 'status': entry.status},
+          )),
+    );
+
+    // Aggregate calendar events
+    final events =
+        await calendarEventRepository.getEventsByDateRange(ownerId, start, end);
+    items.addAll(
+      events.map((event) => SchedulableItem(
+            id: event.id,
+            title: event.title,
+            moduleSource: 'events',
+            startDate: event.startDate,
+            endDate: event.endDate,
+            entityType: EntityType.calendarEvent,
+            metadata: {
+              'description': event.description,
+              'status': event.status,
+            },
           )),
     );
 
@@ -99,6 +120,23 @@ class CalendarRepositoryImpl implements CalendarRepository {
                 endDate: entry.endDate,
                 entityType: EntityType.journalEntry,
                 metadata: {'content': entry.content, 'status': entry.status},
+              ))
+          .toList();
+    } else if (moduleName == 'events') {
+      final events = await calendarEventRepository.getEventsByDateRange(
+          ownerId, start, end);
+      return events
+          .map((event) => SchedulableItem(
+                id: event.id,
+                title: event.title,
+                moduleSource: 'events',
+                startDate: event.startDate,
+                endDate: event.endDate,
+                entityType: EntityType.calendarEvent,
+                metadata: {
+                  'description': event.description,
+                  'status': event.status,
+                },
               ))
           .toList();
     }

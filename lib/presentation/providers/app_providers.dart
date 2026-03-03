@@ -47,6 +47,7 @@ final enabledModulesProvider = StateProvider<Map<String, bool>>((ref) {
     'tasks': true,
     'journal': true,
     'calendar': true,
+    'events': true,
     'habits': false,
     'health': false,
     'finance': false,

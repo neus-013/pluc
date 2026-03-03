@@ -8,6 +8,8 @@ import 'package:pluc/features/journal/domain/repositories/journal_repository.dar
 import 'package:pluc/features/journal/data/repositories/journal_repository_impl.dart';
 import 'package:pluc/features/calendar/domain/repositories/calendar_repository.dart';
 import 'package:pluc/features/calendar/data/repositories/calendar_repository_impl.dart';
+import 'package:pluc/features/calendar/domain/repositories/calendar_event_repository.dart';
+import 'package:pluc/features/calendar/data/repositories/calendar_event_repository_impl.dart';
 import 'events/event_bus.dart';
 import 'services/preset_service.dart';
 
@@ -43,15 +45,26 @@ final journalRepositoryProvider = Provider<JournalRepository>((ref) {
 });
 
 /// ============================================================================
+/// CALENDAR EVENT REPOSITORY PROVIDER
+/// ============================================================================
+final calendarEventRepositoryProvider =
+    Provider<CalendarEventRepository>((ref) {
+  final db = ref.read(databaseProvider);
+  return CalendarEventRepositoryImpl(db);
+});
+
+/// ============================================================================
 /// CALENDAR REPOSITORY PROVIDER
 /// Depends on other repositories; never accesses DB directly
 /// ============================================================================
 final calendarRepositoryProvider = Provider<CalendarRepository>((ref) {
   final taskRepo = ref.read(taskRepositoryProvider);
   final journalRepo = ref.read(journalRepositoryProvider);
+  final eventRepo = ref.read(calendarEventRepositoryProvider);
   return CalendarRepositoryImpl(
     taskRepository: taskRepo,
     journalRepository: journalRepo,
+    calendarEventRepository: eventRepo,
   );
 });
 
@@ -72,4 +85,3 @@ final presetServiceProvider = Provider<PresetService>((ref) {
   final eventBus = ref.read(eventBusProvider);
   return PresetService(eventBus: eventBus);
 });
-

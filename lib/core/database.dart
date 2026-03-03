@@ -146,6 +146,23 @@ class NutritionEntries extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+class CalendarEvents extends Table {
+  TextColumn get id => text()();
+  TextColumn get ownerId => text()();
+  TextColumn get title => text()();
+  TextColumn get description => text().nullable()();
+  DateTimeColumn get startDate => dateTime().nullable()();
+  DateTimeColumn get endDate => dateTime().nullable()();
+  TextColumn get recurrenceRule => text().nullable()();
+  TextColumn get reminderSettings => text().nullable()(); // JSON
+  TextColumn get status => text().withDefault(const Constant('active'))();
+  TextColumn get linkedEntityId => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Users,
@@ -161,23 +178,28 @@ class NutritionEntries extends Table {
     HealthRecords,
     MenstruationCycles,
     NutritionEntries,
+    CalendarEvents,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2; // Updated for ownerId migration
+  int get schemaVersion => 3; // Added CalendarEvents table
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
-        // Create all tables with the current schema (v2 with ownerId)
+        // Create all tables with the current schema (v3 with CalendarEvents)
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        if (from == 1 && to == 2) {
+        if (from < 3) {
+          // v3: Create CalendarEvents table
+          await m.createTable(calendarEvents);
+        }
+        if (from == 1 && to >= 2) {
           // Migration: Handle userId to ownerId transition
           // This migration renames userId columns to ownerId in all tables
           // For tables that might have been created with the old schema
