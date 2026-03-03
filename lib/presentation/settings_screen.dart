@@ -46,6 +46,7 @@ class SettingsScreen extends ConsumerWidget {
     final passwordLength = ref.watch(passwordLengthProvider);
     final currentLocale = ref.watch(localeProvider);
     final currentTheme = ref.watch(currentThemeProvider);
+    final theme = currentTheme; // Convenience alias
 
     // Extract username from User entity
     final username = currentUser?.username ?? 'User';
@@ -68,112 +69,77 @@ class SettingsScreen extends ConsumerWidget {
     };
 
     return Scaffold(
-      appBar: AppBar(title: Text(strings.settings)),
+      appBar: theme.buildAppBar(title: strings.settings),
       body: ListView(
         children: [
-          // Profile Section
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              strings.profile,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-          ),
-          Card(
-            key: const Key('profile_card'),
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${strings.username}:',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    username,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    '${strings.password}:',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '•' * passwordLength,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    '${strings.language}:',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  SegmentedButton<String>(
-                    segments: languages.entries
-                        .map(
-                          (e) => ButtonSegment(
-                            value: e.key,
-                            label: Text(e.value),
-                          ),
-                        )
-                        .toList(),
-                    selected: {currentLocale.languageCode},
-                    onSelectionChanged: (Set<String> selection) {
-                      final newLocale = Locale(selection.first);
-                      ref.read(localeProvider.notifier).state = newLocale;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Theme:',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: _themeKey(currentTheme),
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'modern',
-                        child: Text('Modern Minimal'),
+          theme.buildSettingSection(title: strings.profile, context: context),
+          theme.buildSettingCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${strings.username}:',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[600],
                       ),
-                      DropdownMenuItem(
-                        value: 'cozy',
-                        child: Text('Cozy Illustrated'),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  username,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  '${strings.password}:',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[600],
                       ),
-                    ],
-                    onChanged: (value) {
-                      if (value == 'cozy') {
-                        ref.read(currentThemeProvider.notifier).state =
-                            CozyIllustratedTheme();
-                        return;
-                      }
-
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '•' * passwordLength,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  '${strings.language}:',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                ),
+                const SizedBox(height: 8),
+                theme.buildLanguageSelector(
+                  languages: languages,
+                  currentLanguage: currentLocale.languageCode,
+                  onLanguageChanged: (lang) {
+                    final newLocale = Locale(lang);
+                    ref.read(localeProvider.notifier).state = newLocale;
+                  },
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Theme:',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                ),
+                const SizedBox(height: 8),
+                theme.buildThemeSelector(
+                  currentThemeKey: _themeKey(currentTheme),
+                  onThemeChanged: (value) {
+                    if (value == 'cozy') {
                       ref.read(currentThemeProvider.notifier).state =
-                          ModernMinimalTheme();
-                    },
-                  ),
-                ],
-              ),
+                          CozyIllustratedTheme();
+                      return;
+                    }
+                    ref.read(currentThemeProvider.notifier).state =
+                        ModernMinimalTheme();
+                  },
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),
-          // Logout Button
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: ElevatedButton.icon(
@@ -181,19 +147,13 @@ class SettingsScreen extends ConsumerWidget {
               onPressed: () async {
                 final shouldLogout = await showDialog<bool>(
                   context: context,
-                  builder: (context) => AlertDialog(
-                    title: Text(strings.logout),
-                    content: Text(strings.logoutConfirm),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: Text(strings.cancel),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: Text(strings.logout),
-                      ),
-                    ],
+                  builder: (ctx) => theme.buildConfirmDialog(
+                    context: ctx,
+                    title: strings.logout,
+                    content: strings.logoutConfirm,
+                    confirmLabel: strings.logout,
+                    cancelLabel: strings.cancel,
+                    onConfirm: () {},
                   ),
                 );
 
@@ -218,15 +178,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-
-          // Modules Section
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              strings.modules,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-          ),
+          theme.buildSettingSection(title: strings.modules, context: context),
           ...moduleList.map((moduleId) {
             final isEnabled = enabledModules[moduleId] ?? false;
             final selectedPreset = selectedPresets[moduleId] ?? 'flexible';

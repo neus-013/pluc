@@ -142,6 +142,19 @@ final moduleDefinitionsProvider =
 // CALENDAR STATE
 // ============================================================================
 
+/// Available calendar view modes
+enum CalendarViewMode { day, week, month }
+
+/// Current calendar view mode (day, week, month)
+final calendarViewModeProvider =
+    StateProvider<CalendarViewMode>((ref) => CalendarViewMode.month);
+
+/// The currently focused date for calendar navigation
+final calendarFocusDateProvider = StateProvider<DateTime>((ref) {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, now.day);
+});
+
 final selectedDateRangeProvider = StateProvider<(DateTime, DateTime)>((ref) {
   final now = DateTime.now();
   return (
@@ -150,8 +163,13 @@ final selectedDateRangeProvider = StateProvider<(DateTime, DateTime)>((ref) {
   );
 });
 
+/// Bump this to force calendarItemsProvider to re-fetch
+final calendarRefreshKeyProvider = StateProvider<int>((ref) => 0);
+
 /// Fetch schedulable items for selected date range
 final calendarItemsProvider = FutureProvider<List<dynamic>>((ref) async {
+  // Watch refresh key so external events (task/journal creation) trigger re-fetch
+  ref.watch(calendarRefreshKeyProvider);
   final calendarRepo = ref.read(calendarRepositoryProvider);
   final (start, end) = ref.watch(selectedDateRangeProvider);
   final enabledModules = ref.watch(enabledModulesProvider);

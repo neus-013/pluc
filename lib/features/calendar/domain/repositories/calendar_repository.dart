@@ -2,14 +2,32 @@ import 'package:pluc/core/entities.dart';
 
 /// Represents a schedulable entity from any module.
 /// Used by Calendar for aggregation.
-class SchedulableItem {
+/// Implements [SchedulableEntity] so calendar views can treat it uniformly.
+class SchedulableItem implements SchedulableEntity {
   final String id;
   final String title;
   final String moduleSource;
+
+  @override
   final DateTime? startDate;
+
+  @override
   final DateTime? endDate;
+
   final EntityType entityType;
   final Map<String, dynamic>? metadata;
+
+  @override
+  String? get recurrenceRule => null;
+
+  @override
+  Map<String, dynamic>? get reminderSettings => null;
+
+  @override
+  String? get status => metadata?['status'] as String?;
+
+  @override
+  String? get linkedEntityId => null;
 
   const SchedulableItem({
     required this.id,

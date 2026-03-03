@@ -30,7 +30,7 @@ class CalendarRepositoryImpl implements CalendarRepository {
             id: task.id,
             title: task.title,
             moduleSource: 'tasks',
-            startDate: task.startDate,
+            startDate: task.startDate ?? task.createdAt,
             endDate: task.endDate,
             entityType: EntityType.task,
             metadata: {'description': task.description, 'status': task.status},
@@ -78,7 +78,7 @@ class CalendarRepositoryImpl implements CalendarRepository {
                 id: task.id,
                 title: task.title,
                 moduleSource: 'tasks',
-                startDate: task.startDate,
+                startDate: task.startDate ?? task.createdAt,
                 endDate: task.endDate,
                 entityType: EntityType.task,
                 metadata: {

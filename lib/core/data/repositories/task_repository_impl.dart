@@ -82,7 +82,12 @@ class TaskRepositoryImpl implements TaskRepository {
       final tasks = await (db.select(db.tasks)
             ..where((t) =>
                 t.ownerId.equals(ownerId) &
-                t.startDate.isBetweenValues(start, end)))
+                (
+                    // Tasks with a startDate in range
+                    t.startDate.isBetweenValues(start, end) |
+                        // Tasks without startDate — fall back to createdAt
+                        (t.startDate.isNull() &
+                            t.createdAt.isBetweenValues(start, end)))))
           .get();
       return tasks.map(_mapToDomain).toList();
     } catch (e) {

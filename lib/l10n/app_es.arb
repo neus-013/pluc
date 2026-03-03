@@ -51,5 +51,15 @@
   "noEventsThisWeek": "No hay eventos esta semana",
   "logout": "Cerrar sesión",
   "logoutConfirm": "¿Estás seguro de que quieres cerrar sesión?",
-  "cancel": "Cancelar"
+  "cancel": "Cancelar",
+  "newTask": "Nueva tarea",
+  "editTask": "Editar tarea",
+  "newJournalEntry": "Nueva entrada",
+  "editJournalEntry": "Editar entrada",
+  "delete": "Eliminar",
+  "complete": "Completar",
+  "markPending": "Marcar pendiente",
+  "taskUpdated": "¡Tarea actualizada!",
+  "journalEntryUpdated": "¡Entrada actualizada!",
+  "dueDate": "Fecha de vencimiento"
 }

@@ -14,10 +14,6 @@ class TaskScreen extends ConsumerStatefulWidget {
 }
 
 class _TaskScreenState extends ConsumerState<TaskScreen> {
-  final _titleController = TextEditingController();
-  final _descController = TextEditingController();
-  DateTime? _selectedDate;
-  bool _saving = false;
   int _refreshKey = 0;
 
   void _refreshTasks() {
@@ -32,380 +28,187 @@ class _TaskScreenState extends ConsumerState<TaskScreen> {
     final taskRepo = ref.read(taskRepositoryProvider);
     final eventBus = ref.read(eventBusProvider);
     final userId = ref.read(currentUserIdProvider);
-    final modulePresets = ref.watch(modulePresetsProvider);
-    final selectedPreset = modulePresets['tasks'] ?? 'flexible';
-    final featureToggles = ref.watch(featureTogglesProvider);
-    final taskToggles = featureToggles['tasks'] ?? [];
     final theme = ref.watch(currentThemeProvider);
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          // Task List Section
-          Expanded(
-            flex: 3,
-            child: Card(
-              margin: EdgeInsets.only(bottom: 16),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        Icon(Icons.list, color: Colors.blue),
-                        SizedBox(width: 8),
-                        Text(
-                          strings.tasks,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Spacer(),
-                        IconButton(
-                          icon: Icon(Icons.refresh),
-                          onPressed: _refreshTasks,
-                          tooltip: 'Refresh',
-                        ),
-                      ],
-                    ),
-                  ),
-                  Divider(height: 1),
-                  Expanded(
-                    child: FutureBuilder<List<Task>>(
-                      key: ValueKey(_refreshKey),
-                      future: taskRepo.getTasksForUser(userId),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return Center(child: CircularProgressIndicator());
-                        }
+    return Stack(
+      children: [
+        // Task list
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              theme.buildSectionHeader(
+                icon: Icons.list,
+                title: strings.tasks,
+                iconColor: Colors.blue,
+                onRefresh: _refreshTasks,
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: FutureBuilder<List<Task>>(
+                  key: ValueKey(_refreshKey),
+                  future: taskRepo.getTasksForUser(userId),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return theme.buildLoadingIndicator();
+                    }
 
-                        if (snapshot.hasError) {
-                          return Center(
-                            child: Text('Error: ${snapshot.error}'),
-                          );
-                        }
+                    if (snapshot.hasError) {
+                      return theme.buildErrorState(
+                          error: snapshot.error.toString());
+                    }
 
-                        final tasks = snapshot.data ?? [];
+                    final tasks = snapshot.data ?? [];
 
-                        if (tasks.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.task_alt,
-                                  size: 64,
-                                  color: Colors.grey.shade300,
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  'No tasks yet',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
+                    if (tasks.isEmpty) {
+                      return theme.buildEmptyState(
+                        icon: Icons.task_alt,
+                        label: strings.tasks,
+                        color: Colors.grey,
+                      );
+                    }
 
-                        return ListView.builder(
-                          itemCount: tasks.length,
-                          itemBuilder: (context, index) {
-                            final task = tasks[index];
-                            // Delegate task rendering to theme configuration
-                            // This allows different themes to present tasks differently
-                            // (e.g., cards vs lists, compact vs detailed)
-                            return theme.buildTaskCard(
-                              task,
-                              onDelete: () async {
-                                final confirmed = await showDialog<bool>(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: Text('Delete Task'),
-                                    content: Text(
-                                        'Are you sure you want to delete "${task.title}"?'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, false),
-                                        child: Text('Cancel'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, true),
-                                        child: Text('Delete',
-                                            style:
-                                                TextStyle(color: Colors.red)),
-                                      ),
-                                    ],
-                                  ),
-                                );
-
-                                if (confirmed == true) {
-                                  try {
-                                    await taskRepo.deleteTask(task.id, userId);
-                                    _refreshTasks();
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text('Task deleted'),
-                                          backgroundColor: Colors.green,
-                                        ),
-                                      );
-                                    }
-                                  } catch (e) {
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content:
-                                              Text('Error deleting task: $e'),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                }
-                              },
+                    return ListView.builder(
+                      itemCount: tasks.length,
+                      itemBuilder: (context, index) {
+                        final task = tasks[index];
+                        return theme.buildTaskCard(
+                          task,
+                          onToggleComplete: () async {
+                            try {
+                              final newStatus = task.status == 'completed'
+                                  ? 'pending'
+                                  : 'completed';
+                              final updated = task.copyWith(
+                                status: newStatus,
+                                updatedAt: DateTime.now(),
+                              );
+                              await taskRepo.saveTask(updated);
+                              _refreshTasks();
+                              ref
+                                  .read(calendarRefreshKeyProvider.notifier)
+                                  .state++;
+                              if (mounted) {
+                                theme.showSuccessSnackbar(
+                                    context, strings.taskUpdated);
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                theme.showErrorSnackbar(
+                                    context, '${strings.error}: $e');
+                              }
+                            }
+                          },
+                          onTap: () async {
+                            final edited = await theme.showTaskDialog(
+                              context: context,
+                              existingTask: task,
                             );
+                            if (edited != null) {
+                              try {
+                                await taskRepo.saveTask(edited);
+                                _refreshTasks();
+                                ref
+                                    .read(calendarRefreshKeyProvider.notifier)
+                                    .state++;
+                                if (mounted) {
+                                  theme.showSuccessSnackbar(
+                                      context, strings.taskUpdated);
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  theme.showErrorSnackbar(
+                                      context, '${strings.error}: $e');
+                                }
+                              }
+                            }
+                          },
+                          onDelete: () async {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => theme.buildConfirmDialog(
+                                context: ctx,
+                                title: strings.delete,
+                                content: '${strings.delete} "${task.title}"?',
+                                confirmLabel: strings.delete,
+                                cancelLabel: strings.cancel,
+                                onConfirm: () {},
+                              ),
+                            );
+
+                            if (confirmed == true) {
+                              try {
+                                await taskRepo.deleteTask(task.id, userId);
+                                _refreshTasks();
+                                ref
+                                    .read(calendarRefreshKeyProvider.notifier)
+                                    .state++;
+                                if (mounted) {
+                                  theme.showSuccessSnackbar(
+                                      context, strings.delete);
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  theme.showErrorSnackbar(
+                                      context, '${strings.error}: $e');
+                                }
+                              }
+                            }
                           },
                         );
                       },
-                    ),
-                  ),
-                ],
+                    );
+                  },
+                ),
               ),
-            ),
+            ],
           ),
-          // Create Task Form Section
-          Expanded(
-            flex: 2,
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  Card(
-                    margin: EdgeInsets.only(bottom: 12),
-                    child: Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.add_task, color: Colors.green),
-                              SizedBox(width: 8),
-                              Text(
-                                strings.create,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(Icons.info, color: Colors.blue, size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                '${strings.preset}: ${_capitalize(selectedPreset)}',
-                                style:
-                                    TextStyle(fontSize: 12, color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            children: taskToggles
-                                .where((t) => t.enabled)
-                                .map((toggle) => Chip(
-                                      label: Text(toggle.name),
-                                      backgroundColor: Colors.blue.shade100,
-                                    ))
-                                .toList(),
-                          ),
-                        ],
-                      ),
+        ),
+        // FAB – create new task via dialog
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: theme.buildCreateFab(
+            onPressed: () async {
+              final newTask = await theme.showTaskDialog(context: context);
+              if (newTask != null) {
+                try {
+                  final now = DateTime.now();
+                  final taskId = 'task_${now.millisecondsSinceEpoch}';
+                  final task = newTask.copyWith(
+                    id: taskId,
+                    createdAt: now,
+                    updatedAt: now,
+                    ownerId: userId,
+                    moduleSource: 'tasks',
+                  );
+
+                  await taskRepo.saveTask(task);
+
+                  await eventBus.emit(
+                    TaskCreatedEvent(
+                      taskId: taskId,
+                      title: task.title,
+                      userId: userId,
                     ),
-                  ),
-                  TextField(
-                    controller: _titleController,
-                    decoration: InputDecoration(
-                      labelText: strings.taskTitle,
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  SizedBox(height: 12),
-                  TextField(
-                    controller: _descController,
-                    decoration: InputDecoration(
-                      labelText: strings.description,
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLines: 3,
-                  ),
-                  SizedBox(height: 12),
-                  if (taskToggles
-                      .any((t) => t.name == 'scheduling' && t.enabled))
-                    Row(
-                      children: [
-                        Icon(Icons.calendar_today, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          _selectedDate != null
-                              ? '${_selectedDate!.toString().split(' ')[0]}'
-                              : strings.selectDueDate,
-                        ),
-                        Spacer(),
-                        ElevatedButton(
-                          onPressed: () async {
-                            final date = await showDatePicker(
-                              context: context,
-                              initialDate: DateTime.now(),
-                              firstDate: DateTime.now(),
-                              lastDate: DateTime.now().add(Duration(days: 365)),
-                            );
-                            if (date != null) {
-                              setState(() {
-                                _selectedDate = date;
-                              });
-                            }
-                          },
-                          child: Text(strings.pick),
-                        ),
-                      ],
-                    ),
-                  SizedBox(height: 24),
-                  if (_saving)
-                    CircularProgressIndicator()
-                  else
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        // Validate required fields
-                        if (_titleController.text.trim().isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(strings.enterTaskTitle)),
-                          );
-                          return;
-                        }
+                  );
 
-                        // Get userId and validate
-                        final userId = ref.read(currentUserIdProvider);
-                        if (userId.isEmpty || userId == 'user_default') {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: No user logged in')),
-                          );
-                          return;
-                        }
+                  _refreshTasks();
+                  ref.read(calendarRefreshKeyProvider.notifier).state++;
 
-                        setState(() {
-                          _saving = true;
-                        });
-
-                        try {
-                          final now = DateTime.now();
-                          final taskId = 'task_${now.millisecondsSinceEpoch}';
-
-                          // Create task with proper null handling
-                          final task = Task(
-                            id: taskId,
-                            createdAt: now,
-                            updatedAt: now,
-                            ownerId: userId,
-                            moduleSource: 'tasks',
-                            title: _titleController.text.trim(),
-                            description: _descController.text.trim().isEmpty
-                                ? null
-                                : _descController.text.trim(),
-                            startDate: _selectedDate,
-                            status: 'pending',
-                          );
-
-                          print('DEBUG: Attempting to save task: $taskId');
-                          print('DEBUG: Task ownerId: ${task.ownerId}');
-                          print('DEBUG: Task title: ${task.title}');
-
-                          // Save via repository
-                          await taskRepo.saveTask(task);
-
-                          print('DEBUG: Task saved successfully');
-
-                          // Emit event
-                          await eventBus.emit(
-                            TaskCreatedEvent(
-                              taskId: taskId,
-                              title: _titleController.text,
-                              userId: userId,
-                            ),
-                          );
-
-                          print('DEBUG: Event emitted');
-
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(strings.taskCreated),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-
-                            // Clear the form for next entry
-                            _titleController.clear();
-                            _descController.clear();
-                            setState(() {
-                              _selectedDate = null;
-                            });
-
-                            // Refresh the task list
-                            _refreshTasks();
-                          }
-                        } catch (e, stackTrace) {
-                          print('ERROR creating task: $e');
-                          print('STACK TRACE: $stackTrace');
-
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('${strings.error}: $e'),
-                                duration: Duration(seconds: 5),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        } finally {
-                          if (mounted) {
-                            setState(() {
-                              _saving = false;
-                            });
-                          }
-                        }
-                      },
-                      icon: Icon(Icons.check),
-                      label: Text(strings.create),
-                    ),
-                ],
-              ),
-            ),
+                  if (mounted) {
+                    theme.showSuccessSnackbar(context, strings.taskCreated);
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    theme.showErrorSnackbar(context, '${strings.error}: $e');
+                  }
+                }
+              }
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
-  }
-
-  String _capitalize(String s) => s[0].toUpperCase() + s.substring(1);
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descController.dispose();
-    super.dispose();
   }
 }

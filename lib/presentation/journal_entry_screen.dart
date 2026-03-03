@@ -14,8 +14,6 @@ class JournalEntryScreen extends ConsumerStatefulWidget {
 }
 
 class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
-  final _contentController = TextEditingController();
-  bool _saving = false;
   int _refreshKey = 0;
 
   void _refreshEntries() {
@@ -30,328 +28,167 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
     final journalRepo = ref.read(journalRepositoryProvider);
     final eventBus = ref.read(eventBusProvider);
     final userId = ref.read(currentUserIdProvider);
-    final modulePresets = ref.watch(modulePresetsProvider);
-    final selectedPreset = modulePresets['journal'] ?? 'flexible';
     final theme = ref.watch(currentThemeProvider);
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          // Journal Entries List Section
-          Expanded(
-            flex: 3,
-            child: Card(
-              margin: EdgeInsets.only(bottom: 16),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        Icon(Icons.book, color: Colors.blue),
-                        SizedBox(width: 8),
-                        Text(
-                          strings.journal,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Spacer(),
-                        IconButton(
-                          icon: Icon(Icons.refresh),
-                          onPressed: _refreshEntries,
-                          tooltip: 'Refresh',
-                        ),
-                      ],
-                    ),
-                  ),
-                  Divider(height: 1),
-                  Expanded(
-                    child: FutureBuilder<List<JournalEntry>>(
-                      key: ValueKey(_refreshKey),
-                      future: journalRepo.getEntriesForUser(userId),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return Center(child: CircularProgressIndicator());
-                        }
+    return Stack(
+      children: [
+        // Journal entries list
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              theme.buildSectionHeader(
+                icon: Icons.book,
+                title: strings.journal,
+                iconColor: Colors.blue,
+                onRefresh: _refreshEntries,
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: FutureBuilder<List<JournalEntry>>(
+                  key: ValueKey(_refreshKey),
+                  future: journalRepo.getEntriesForUser(userId),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return theme.buildLoadingIndicator();
+                    }
 
-                        if (snapshot.hasError) {
-                          return Center(
-                            child: Text('Error: ${snapshot.error}'),
-                          );
-                        }
+                    if (snapshot.hasError) {
+                      return theme.buildErrorState(
+                          error: snapshot.error.toString());
+                    }
 
-                        final entries = snapshot.data ?? [];
+                    final entries = snapshot.data ?? [];
 
-                        if (entries.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.auto_stories,
-                                  size: 64,
-                                  color: Colors.grey.shade300,
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  'No entries yet',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
+                    if (entries.isEmpty) {
+                      return theme.buildEmptyState(
+                        icon: Icons.auto_stories,
+                        label: strings.journal,
+                        color: Colors.grey,
+                      );
+                    }
 
-                        // Sort entries by date (newest first)
-                        entries.sort(
-                            (a, b) => b.startDate!.compareTo(a.startDate!));
+                    // Sort entries by date (newest first)
+                    entries.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-                        return ListView.builder(
-                          itemCount: entries.length,
-                          itemBuilder: (context, index) {
-                            final entry = entries[index];
-                            // Delegate journal entry rendering to theme configuration
-                            // This allows different themes to present entries differently
-                            // (e.g., diary style vs note cards, compact vs expanded)
-                            return theme.buildJournalCard(
-                              entry,
-                              onDelete: () async {
-                                final confirmed = await showDialog<bool>(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: Text('Delete Entry'),
-                                    content: Text(
-                                        'Are you sure you want to delete this journal entry?'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, false),
-                                        child: Text('Cancel'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, true),
-                                        child: Text('Delete',
-                                            style:
-                                                TextStyle(color: Colors.red)),
-                                      ),
-                                    ],
-                                  ),
-                                );
-
-                                if (confirmed == true) {
-                                  try {
-                                    await journalRepo.deleteEntry(
-                                        entry.id, userId);
-                                    _refreshEntries();
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text('Entry deleted'),
-                                          backgroundColor: Colors.green,
-                                        ),
-                                      );
-                                    }
-                                  } catch (e) {
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content:
-                                              Text('Error deleting entry: $e'),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                }
-                              },
+                    return ListView.builder(
+                      itemCount: entries.length,
+                      itemBuilder: (context, index) {
+                        final entry = entries[index];
+                        return theme.buildJournalCard(
+                          entry,
+                          onTap: () async {
+                            final edited = await theme.showJournalDialog(
+                              context: context,
+                              existingEntry: entry,
                             );
+                            if (edited != null) {
+                              try {
+                                await journalRepo.saveEntry(edited);
+                                _refreshEntries();
+                                ref
+                                    .read(calendarRefreshKeyProvider.notifier)
+                                    .state++;
+                                if (mounted) {
+                                  theme.showSuccessSnackbar(
+                                      context, strings.journalEntryUpdated);
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  theme.showErrorSnackbar(
+                                      context, '${strings.error}: $e');
+                                }
+                              }
+                            }
+                          },
+                          onDelete: () async {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => theme.buildConfirmDialog(
+                                context: ctx,
+                                title: strings.delete,
+                                content: strings.delete,
+                                confirmLabel: strings.delete,
+                                cancelLabel: strings.cancel,
+                                onConfirm: () {},
+                              ),
+                            );
+
+                            if (confirmed == true) {
+                              try {
+                                await journalRepo.deleteEntry(entry.id, userId);
+                                _refreshEntries();
+                                ref
+                                    .read(calendarRefreshKeyProvider.notifier)
+                                    .state++;
+                                if (mounted) {
+                                  theme.showSuccessSnackbar(
+                                      context, strings.delete);
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  theme.showErrorSnackbar(
+                                      context, '${strings.error}: $e');
+                                }
+                              }
+                            }
                           },
                         );
                       },
-                    ),
-                  ),
-                ],
+                    );
+                  },
+                ),
               ),
-            ),
+            ],
           ),
-          // Create Entry Form Section
-          Expanded(
-            flex: 2,
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  Card(
-                    margin: EdgeInsets.only(bottom: 12),
-                    child: Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          Icon(Icons.add, color: Colors.green),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'New Entry',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Row(
-                                  children: [
-                                    Icon(Icons.info,
-                                        color: Colors.blue, size: 16),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      '${strings.preset}: ${_capitalize(selectedPreset)}',
-                                      style: TextStyle(
-                                          fontSize: 12, color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+        ),
+        // FAB – create new journal entry via dialog
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: theme.buildCreateFab(
+            onPressed: () async {
+              final newEntry = await theme.showJournalDialog(context: context);
+              if (newEntry != null) {
+                try {
+                  final now = DateTime.now();
+                  final entryId = 'entry_${now.millisecondsSinceEpoch}';
+                  final entry = newEntry.copyWith(
+                    id: entryId,
+                    createdAt: now,
+                    updatedAt: now,
+                    ownerId: userId,
+                    moduleSource: 'journal',
+                    startDate: now,
+                  );
+
+                  await journalRepo.saveEntry(entry);
+
+                  await eventBus.emit(
+                    JournalEntryCreatedEvent(
+                      entryId: entryId,
+                      userId: userId,
+                      date: now,
                     ),
-                  ),
-                  TextField(
-                    controller: _contentController,
-                    maxLines: 10,
-                    decoration: InputDecoration(
-                      hintText: strings.writeSomething,
-                      border: OutlineInputBorder(),
-                      labelText: strings.entry,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  if (_saving)
-                    CircularProgressIndicator()
-                  else
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        // Validate required fields
-                        if (_contentController.text.trim().isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text(strings.pleaseWriteSomething)),
-                          );
-                          return;
-                        }
+                  );
 
-                        // Get userId and validate
-                        final userId = ref.read(currentUserIdProvider);
-                        if (userId.isEmpty || userId == 'user_default') {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: No user logged in')),
-                          );
-                          return;
-                        }
+                  _refreshEntries();
+                  ref.read(calendarRefreshKeyProvider.notifier).state++;
 
-                        setState(() {
-                          _saving = true;
-                        });
-
-                        try {
-                          final now = DateTime.now();
-                          final entryId = 'entry_${now.millisecondsSinceEpoch}';
-
-                          print(
-                              'DEBUG: Attempting to save journal entry: $entryId');
-                          print('DEBUG: Entry ownerId: $userId');
-
-                          // Create entry with proper null handling
-                          final entry = JournalEntry(
-                            id: entryId,
-                            createdAt: now,
-                            updatedAt: now,
-                            ownerId: userId,
-                            moduleSource: 'journal',
-                            content: _contentController.text.trim(),
-                            startDate: now,
-                          );
-
-                          // Save via repository
-                          await journalRepo.saveEntry(entry);
-
-                          print('DEBUG: Journal entry saved successfully');
-
-                          // Emit event
-                          await eventBus.emit(
-                            JournalEntryCreatedEvent(
-                              entryId: entryId,
-                              userId: userId,
-                              date: now,
-                            ),
-                          );
-
-                          print('DEBUG: Event emitted');
-
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(strings.journalEntrySaved),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-
-                            // Clear the form for next entry
-                            _contentController.clear();
-
-                            // Refresh the entries list
-                            _refreshEntries();
-                          }
-                        } catch (e, stackTrace) {
-                          print('ERROR creating journal entry: $e');
-                          print('STACK TRACE: $stackTrace');
-
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('${strings.error}: $e'),
-                                duration: Duration(seconds: 5),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        } finally {
-                          if (mounted) {
-                            setState(() {
-                              _saving = false;
-                            });
-                          }
-                        }
-                      },
-                      icon: Icon(Icons.check),
-                      label: Text(strings.save),
-                    ),
-                ],
-              ),
-            ),
+                  if (mounted) {
+                    theme.showSuccessSnackbar(
+                        context, strings.journalEntrySaved);
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    theme.showErrorSnackbar(context, '${strings.error}: $e');
+                  }
+                }
+              }
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
-  }
-
-  String _capitalize(String s) => s[0].toUpperCase() + s.substring(1);
-
-  @override
-  void dispose() {
-    _contentController.dispose();
-    super.dispose();
   }
 }

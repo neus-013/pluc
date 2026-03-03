@@ -51,5 +51,15 @@
   "noEventsThisWeek": "No hi ha esdeveniments aquesta setmana",
   "logout": "Tancar sessió",
   "logoutConfirm": "Estàs segur que vols tancar la sessió?",
-  "cancel": "Cancel·lar"
+  "cancel": "Cancel·lar",
+  "newTask": "Nova tasca",
+  "editTask": "Editar tasca",
+  "newJournalEntry": "Nova entrada",
+  "editJournalEntry": "Editar entrada",
+  "delete": "Eliminar",
+  "complete": "Completar",
+  "markPending": "Marcar pendent",
+  "taskUpdated": "Tasca actualitzada!",
+  "journalEntryUpdated": "Entrada actualitzada!",
+  "dueDate": "Data de venciment"
 }

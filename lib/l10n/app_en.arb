@@ -51,5 +51,15 @@
   "noEventsThisWeek": "No events this week",
   "logout": "Logout",
   "logoutConfirm": "Are you sure you want to logout?",
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+  "newTask": "New Task",
+  "editTask": "Edit Task",
+  "newJournalEntry": "New Entry",
+  "editJournalEntry": "Edit Entry",
+  "delete": "Delete",
+  "complete": "Complete",
+  "markPending": "Mark pending",
+  "taskUpdated": "Task updated!",
+  "journalEntryUpdated": "Entry updated!",
+  "dueDate": "Due date"
 }

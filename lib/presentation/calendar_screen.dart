@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:pluc/l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pluc/core/entities.dart';
 import 'providers/app_providers.dart';
@@ -9,64 +8,93 @@ class CalendarScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final strings = AppLocalizations.of(context)!;
-    final (start, end) = ref.watch(selectedDateRangeProvider);
-    final calendarItems = ref.watch(calendarItemsProvider);
+    final viewMode = ref.watch(calendarViewModeProvider);
+    final focusDate = ref.watch(calendarFocusDateProvider);
     final theme = ref.watch(currentThemeProvider);
+
+    // Compute the date range for the current mode so the provider fetches
+    // the correct window of data.
+    final (start, end) = theme.dateRangeForMode(viewMode, focusDate);
+    // Sync selectedDateRangeProvider (drives calendarItemsProvider).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final current = ref.read(selectedDateRangeProvider);
+      if (current.$1 != start || current.$2 != end) {
+        ref.read(selectedDateRangeProvider.notifier).state = (start, end);
+      }
+    });
+
+    final calendarItems = ref.watch(calendarItemsProvider);
 
     return Column(
       children: [
-        // Date navigation controls
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  final newStart = start.subtract(const Duration(days: 7));
-                  final newEnd = end.subtract(const Duration(days: 7));
-                  ref.read(selectedDateRangeProvider.notifier).state =
-                      (newStart, newEnd);
-                },
-              ),
-              Text(
-                '${start.toString().split(' ')[0]} - ${end.toString().split(' ')[0]}',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              IconButton(
-                icon: const Icon(Icons.arrow_forward),
-                onPressed: () {
-                  final newStart = start.add(const Duration(days: 7));
-                  final newEnd = end.add(const Duration(days: 7));
-                  ref.read(selectedDateRangeProvider.notifier).state =
-                      (newStart, newEnd);
-                },
-              ),
-            ],
-          ),
+        theme.buildCalendarToolbar(
+          context: context,
+          currentMode: viewMode,
+          focusDate: focusDate,
+          onModeChanged: (mode) {
+            ref.read(calendarViewModeProvider.notifier).state = mode;
+          },
+          onPrevious: () {
+            final current = ref.read(calendarFocusDateProvider);
+            switch (viewMode) {
+              case CalendarViewMode.day:
+                ref.read(calendarFocusDateProvider.notifier).state =
+                    current.subtract(const Duration(days: 1));
+                break;
+              case CalendarViewMode.week:
+                ref.read(calendarFocusDateProvider.notifier).state =
+                    current.subtract(const Duration(days: 7));
+                break;
+              case CalendarViewMode.month:
+                ref.read(calendarFocusDateProvider.notifier).state =
+                    DateTime(current.year, current.month - 1, 1);
+                break;
+            }
+          },
+          onNext: () {
+            final current = ref.read(calendarFocusDateProvider);
+            switch (viewMode) {
+              case CalendarViewMode.day:
+                ref.read(calendarFocusDateProvider.notifier).state =
+                    current.add(const Duration(days: 1));
+                break;
+              case CalendarViewMode.week:
+                ref.read(calendarFocusDateProvider.notifier).state =
+                    current.add(const Duration(days: 7));
+                break;
+              case CalendarViewMode.month:
+                ref.read(calendarFocusDateProvider.notifier).state =
+                    DateTime(current.year, current.month + 1, 1);
+                break;
+            }
+          },
+          onToday: () {
+            final now = DateTime.now();
+            ref.read(calendarFocusDateProvider.notifier).state =
+                DateTime(now.year, now.month, now.day);
+          },
         ),
-        // Calendar view delegated to theme configuration
-        // This allows themes to control calendar presentation:
-        // - Grid calendar vs timeline vs list view
-        // - Visual density and spacing
-        // - Item display format
         Expanded(
-          child: calendarItems.when(
-            data: (items) {
-              // Filter to only SchedulableEntity items
-              final schedulableItems =
-                  items.whereType<SchedulableEntity>().toList();
-
-              // Delegate rendering to theme
-              return theme.buildCalendarView(schedulableItems);
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => Center(
-              child: Text('${strings.error}: $error'),
-            ),
-          ),
+          child: () {
+            // Keep showing previous data during navigation transitions
+            // to avoid full widget tree replacement that breaks AXTree.
+            final previousItems = calendarItems.valueOrNull;
+            if (calendarItems.isLoading && previousItems == null) {
+              return theme.buildLoadingIndicator();
+            }
+            if (calendarItems.hasError && previousItems == null) {
+              return theme.buildErrorState(
+                  error: calendarItems.error.toString());
+            }
+            final items = previousItems ?? [];
+            final schedulableItems =
+                items.whereType<SchedulableEntity>().toList();
+            return theme.buildCalendarView(
+              schedulableItems,
+              viewMode: viewMode,
+              focusDate: focusDate,
+            );
+          }(),
         ),
       ],
     );
