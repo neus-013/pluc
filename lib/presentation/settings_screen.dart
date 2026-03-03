@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pluc/l10n/app_localizations.dart';
+import 'package:pluc/presentation/theme/app_theme_config.dart';
 import 'providers/app_providers.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({Key? key}) : super(key: key);
+
+  String _themeKey(AppThemeConfig theme) {
+    if (theme is CozyIllustratedTheme) {
+      return 'cozy';
+    }
+    return 'modern';
+  }
 
   String _getModuleName(String moduleId, AppLocalizations strings) {
     switch (moduleId) {
@@ -37,6 +45,7 @@ class SettingsScreen extends ConsumerWidget {
     final currentUser = ref.watch(currentUserProvider);
     final passwordLength = ref.watch(passwordLengthProvider);
     final currentLocale = ref.watch(localeProvider);
+    final currentTheme = ref.watch(currentThemeProvider);
 
     // Extract username from User entity
     final username = currentUser?.username ?? 'User';
@@ -122,6 +131,41 @@ class SettingsScreen extends ConsumerWidget {
                     onSelectionChanged: (Set<String> selection) {
                       final newLocale = Locale(selection.first);
                       ref.read(localeProvider.notifier).state = newLocale;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Theme:',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _themeKey(currentTheme),
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'modern',
+                        child: Text('Modern Minimal'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'cozy',
+                        child: Text('Cozy Illustrated'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == 'cozy') {
+                        ref.read(currentThemeProvider.notifier).state =
+                            CozyIllustratedTheme();
+                        return;
+                      }
+
+                      ref.read(currentThemeProvider.notifier).state =
+                          ModernMinimalTheme();
                     },
                   ),
                 ],

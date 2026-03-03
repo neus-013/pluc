@@ -56,10 +56,9 @@ class CalendarScreen extends ConsumerWidget {
           child: calendarItems.when(
             data: (items) {
               // Filter to only SchedulableEntity items
-              final schedulableItems = items
-                  .whereType<SchedulableEntity>()
-                  .toList();
-              
+              final schedulableItems =
+                  items.whereType<SchedulableEntity>().toList();
+
               // Delegate rendering to theme
               return theme.buildCalendarView(schedulableItems);
             },

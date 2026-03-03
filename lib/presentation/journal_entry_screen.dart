@@ -165,8 +165,8 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(
                                         SnackBar(
-                                          content: Text(
-                                              'Error deleting entry: $e'),
+                                          content:
+                                              Text('Error deleting entry: $e'),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
