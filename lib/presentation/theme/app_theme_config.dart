@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pluc/core/domain/entities/task.dart';
 import 'package:pluc/features/journal/domain/entities/journal_entry.dart';
 import 'package:pluc/core/entities.dart';
+import 'package:pluc/features/calendar/domain/repositories/calendar_repository.dart';
 import 'package:pluc/presentation/providers/app_providers.dart'
     show CalendarViewMode;
 
@@ -88,6 +89,8 @@ abstract class AppThemeConfig {
     List<SchedulableEntity> items, {
     required CalendarViewMode viewMode,
     required DateTime focusDate,
+    Function(SchedulableEntity)? onItemTap,
+    Function(SchedulableEntity)? onToggleComplete,
   });
 
   // Calendar toolbar with view mode switcher and navigation
@@ -229,15 +232,38 @@ abstract class _BaseThemeConfig implements AppThemeConfig {
   String formatTime(DateTime date) =>
       '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 
+  bool isTaskItem(SchedulableEntity item) {
+    if (item is Task) return true;
+    if (item is SchedulableItem) return item.moduleSource == 'tasks';
+    return false;
+  }
+
+  bool isCompletedItem(SchedulableEntity item) {
+    return item.status == 'completed';
+  }
+
   IconData iconForItem(SchedulableEntity item) {
-    if (item is Task) return Icons.check_circle_outline;
+    if (item is Task) {
+      return item.status == 'completed'
+          ? Icons.check_circle
+          : Icons.check_circle_outline;
+    }
     if (item is JournalEntry) return Icons.menu_book_outlined;
+    if (item is SchedulableItem) {
+      if (item.moduleSource == 'tasks') {
+        return item.status == 'completed'
+            ? Icons.check_circle
+            : Icons.check_circle_outline;
+      }
+      if (item.moduleSource == 'journal') return Icons.menu_book_outlined;
+    }
     return Icons.event_note;
   }
 
   String titleForItem(SchedulableEntity item) {
     if (item is Task) return item.title;
     if (item is JournalEntry) return item.content;
+    if (item is SchedulableItem) return item.title;
     return 'Event';
   }
 
@@ -1259,19 +1285,26 @@ class ModernMinimalTheme extends _BaseThemeConfig {
     List<SchedulableEntity> items, {
     required CalendarViewMode viewMode,
     required DateTime focusDate,
+    Function(SchedulableEntity)? onItemTap,
+    Function(SchedulableEntity)? onToggleComplete,
   }) {
     switch (viewMode) {
       case CalendarViewMode.day:
-        return _buildModernDayView(items, focusDate);
+        return _buildModernDayView(items, focusDate,
+            onItemTap: onItemTap, onToggleComplete: onToggleComplete);
       case CalendarViewMode.week:
-        return _buildModernWeekView(items, focusDate);
+        return _buildModernWeekView(items, focusDate,
+            onItemTap: onItemTap, onToggleComplete: onToggleComplete);
       case CalendarViewMode.month:
-        return _buildModernMonthView(items, focusDate);
+        return _buildModernMonthView(items, focusDate,
+            onItemTap: onItemTap, onToggleComplete: onToggleComplete);
     }
   }
 
   // ── Day View ──────────────────────────────────────────────────────────────
-  Widget _buildModernDayView(List<SchedulableEntity> items, DateTime day) {
+  Widget _buildModernDayView(List<SchedulableEntity> items, DateTime day,
+      {Function(SchedulableEntity)? onItemTap,
+      Function(SchedulableEntity)? onToggleComplete}) {
     final dayKey = DateTime(day.year, day.month, day.day);
     final dayItems = items
         .where((e) =>
@@ -1339,7 +1372,9 @@ class ModernMinimalTheme extends _BaseThemeConfig {
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: hourItems
-                                .map((item) => _modernEventChip(item))
+                                .map((item) => _modernEventChip(item,
+                                    onItemTap: onItemTap,
+                                    onToggleComplete: onToggleComplete))
                                 .toList(),
                           ),
                   ),
@@ -1352,43 +1387,72 @@ class ModernMinimalTheme extends _BaseThemeConfig {
     );
   }
 
-  Widget _modernEventChip(SchedulableEntity item) {
+  Widget _modernEventChip(SchedulableEntity item,
+      {Function(SchedulableEntity)? onItemTap,
+      Function(SchedulableEntity)? onToggleComplete}) {
     final key = item is BaseEntity
         ? ValueKey((item as BaseEntity).id)
         : ValueKey(item.hashCode);
-    return Container(
-      key: key,
-      margin: const EdgeInsets.symmetric(vertical: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE3F0FF),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFB3D4F7)),
-      ),
-      child: Row(
-        children: [
-          Icon(iconForItem(item), size: 14, color: const Color(0xFF5A8CC8)),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              titleForItem(item),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+    final completed = isCompletedItem(item);
+    final isTask = isTaskItem(item);
+    return GestureDetector(
+      onTap: onItemTap != null ? () => onItemTap(item) : null,
+      child: Container(
+        key: key,
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: completed ? const Color(0xFFE8F5E9) : const Color(0xFFE3F0FF),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+              color: completed
+                  ? const Color(0xFFA5D6A7)
+                  : const Color(0xFFB3D4F7)),
+        ),
+        child: Row(
+          children: [
+            if (isTask && onToggleComplete != null)
+              GestureDetector(
+                onTap: () => onToggleComplete(item),
+                child: Icon(
+                  completed ? Icons.check_circle : Icons.radio_button_unchecked,
+                  size: 18,
+                  color: completed
+                      ? const Color(0xFF4CAF50)
+                      : const Color(0xFF5A8CC8),
+                ),
+              )
+            else
+              Icon(iconForItem(item), size: 14, color: const Color(0xFF5A8CC8)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                titleForItem(item),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  decoration: completed ? TextDecoration.lineThrough : null,
+                  color: completed ? const Color(0xFF7A869A) : null,
+                ),
+              ),
             ),
-          ),
-          if (item.startDate != null)
-            Text(
-              formatTime(item.startDate!),
-              style: const TextStyle(fontSize: 10, color: Color(0xFF7A869A)),
-            ),
-        ],
+            if (item.startDate != null)
+              Text(
+                formatTime(item.startDate!),
+                style: const TextStyle(fontSize: 10, color: Color(0xFF7A869A)),
+              ),
+          ],
+        ),
       ),
     );
   }
 
   // ── Week View ─────────────────────────────────────────────────────────────
-  Widget _buildModernWeekView(List<SchedulableEntity> items, DateTime focus) {
+  Widget _buildModernWeekView(List<SchedulableEntity> items, DateTime focus,
+      {Function(SchedulableEntity)? onItemTap,
+      Function(SchedulableEntity)? onToggleComplete}) {
     final weekStart = focus.subtract(Duration(days: focus.weekday - 1));
     final grouped = groupByDay(items);
 
@@ -1475,7 +1539,8 @@ class ModernMinimalTheme extends _BaseThemeConfig {
                       children: dayItems.isEmpty
                           ? [const SizedBox(height: 4)]
                           : dayItems
-                              .map((item) => _modernWeekEventChip(item))
+                              .map((item) => _modernWeekEventChip(item,
+                                  onItemTap: onItemTap))
                               .toList(),
                     ),
                   ),
@@ -1488,29 +1553,41 @@ class ModernMinimalTheme extends _BaseThemeConfig {
     );
   }
 
-  Widget _modernWeekEventChip(SchedulableEntity item) {
+  Widget _modernWeekEventChip(SchedulableEntity item,
+      {Function(SchedulableEntity)? onItemTap}) {
     final key = item is BaseEntity
         ? ValueKey((item as BaseEntity).id)
         : ValueKey(item.hashCode);
-    return Container(
-      key: key,
-      margin: const EdgeInsets.symmetric(vertical: 1, horizontal: 1),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE3F0FF),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        titleForItem(item),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+    final completed = isCompletedItem(item);
+    return GestureDetector(
+      onTap: onItemTap != null ? () => onItemTap(item) : null,
+      child: Container(
+        key: key,
+        margin: const EdgeInsets.symmetric(vertical: 1, horizontal: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+        decoration: BoxDecoration(
+          color: completed ? const Color(0xFFE8F5E9) : const Color(0xFFE3F0FF),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          titleForItem(item),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+            decoration: completed ? TextDecoration.lineThrough : null,
+            color: completed ? const Color(0xFF7A869A) : null,
+          ),
+        ),
       ),
     );
   }
 
   // ── Month View ────────────────────────────────────────────────────────────
-  Widget _buildModernMonthView(List<SchedulableEntity> items, DateTime focus) {
+  Widget _buildModernMonthView(List<SchedulableEntity> items, DateTime focus,
+      {Function(SchedulableEntity)? onItemTap,
+      Function(SchedulableEntity)? onToggleComplete}) {
     final firstOfMonth = DateTime(focus.year, focus.month, 1);
     final lastOfMonth = DateTime(focus.year, focus.month + 1, 0);
     final startWeekday = firstOfMonth.weekday; // Mon=1
@@ -1611,9 +1688,9 @@ class ModernMinimalTheme extends _BaseThemeConfig {
                                         : const Color(0xFF455A64),
                                   ),
                                 ),
-                                ...dayEvents
-                                    .take(3)
-                                    .map((item) => _modernMonthDot(item)),
+                                ...dayEvents.take(3).map((item) =>
+                                    _modernMonthDot(item,
+                                        onItemTap: onItemTap)),
                                 if (dayEvents.length > 3)
                                   Text(
                                     '+${dayEvents.length - 3}',
@@ -1638,19 +1715,29 @@ class ModernMinimalTheme extends _BaseThemeConfig {
     );
   }
 
-  Widget _modernMonthDot(SchedulableEntity item) {
-    return Container(
-      margin: const EdgeInsets.only(top: 1),
-      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE3F0FF),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Text(
-        titleForItem(item),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w500),
+  Widget _modernMonthDot(SchedulableEntity item,
+      {Function(SchedulableEntity)? onItemTap}) {
+    final completed = isCompletedItem(item);
+    return GestureDetector(
+      onTap: onItemTap != null ? () => onItemTap(item) : null,
+      child: Container(
+        margin: const EdgeInsets.only(top: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+        decoration: BoxDecoration(
+          color: completed ? const Color(0xFFE8F5E9) : const Color(0xFFE3F0FF),
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: Text(
+          titleForItem(item),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w500,
+            decoration: completed ? TextDecoration.lineThrough : null,
+            color: completed ? const Color(0xFF7A869A) : null,
+          ),
+        ),
       ),
     );
   }
@@ -2333,14 +2420,19 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
     List<SchedulableEntity> items, {
     required CalendarViewMode viewMode,
     required DateTime focusDate,
+    Function(SchedulableEntity)? onItemTap,
+    Function(SchedulableEntity)? onToggleComplete,
   }) {
     switch (viewMode) {
       case CalendarViewMode.day:
-        return _buildCozyDayView(items, focusDate);
+        return _buildCozyDayView(items, focusDate,
+            onItemTap: onItemTap, onToggleComplete: onToggleComplete);
       case CalendarViewMode.week:
-        return _buildCozyWeekView(items, focusDate);
+        return _buildCozyWeekView(items, focusDate,
+            onItemTap: onItemTap, onToggleComplete: onToggleComplete);
       case CalendarViewMode.month:
-        return _buildCozyMonthView(items, focusDate);
+        return _buildCozyMonthView(items, focusDate,
+            onItemTap: onItemTap, onToggleComplete: onToggleComplete);
     }
   }
 
@@ -2435,7 +2527,9 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
   }
 
   // ── Day View ──────────────────────────────────────────────────────────────
-  Widget _buildCozyDayView(List<SchedulableEntity> items, DateTime day) {
+  Widget _buildCozyDayView(List<SchedulableEntity> items, DateTime day,
+      {Function(SchedulableEntity)? onItemTap,
+      Function(SchedulableEntity)? onToggleComplete}) {
     final dayKey = DateTime(day.year, day.month, day.day);
     final dayItems = items
         .where((e) =>
@@ -2499,7 +2593,9 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: hourItems
-                                .map((item) => _cozyEventChip(item))
+                                .map((item) => _cozyEventChip(item,
+                                    onItemTap: onItemTap,
+                                    onToggleComplete: onToggleComplete))
                                 .toList(),
                           ),
                   ),
@@ -2512,55 +2608,79 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
     );
   }
 
-  Widget _cozyEventChip(SchedulableEntity item) {
+  Widget _cozyEventChip(SchedulableEntity item,
+      {Function(SchedulableEntity)? onItemTap,
+      Function(SchedulableEntity)? onToggleComplete}) {
     final key = item is BaseEntity
         ? ValueKey((item as BaseEntity).id)
         : ValueKey(item.hashCode);
-    return Container(
-      key: key,
-      margin: const EdgeInsets.symmetric(vertical: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFF8E1), Color(0xFFFFF3E0)],
-        ),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 6,
-            offset: Offset(0, 2),
+    final completed = isCompletedItem(item);
+    final isTask = isTaskItem(item);
+    return GestureDetector(
+      onTap: onItemTap != null ? () => onItemTap(item) : null,
+      child: Container(
+        key: key,
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: completed
+                ? [const Color(0xFFE8F5E9), const Color(0xFFC8E6C9)]
+                : [const Color(0xFFFFF8E1), const Color(0xFFFFF3E0)],
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(iconForItem(item), size: 16, color: const Color(0xFFB57F50)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              titleForItem(item),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF6D4C41),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x12000000),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            if (isTask && onToggleComplete != null)
+              GestureDetector(
+                onTap: () => onToggleComplete(item),
+                child: Icon(
+                  completed ? Icons.check_circle : Icons.radio_button_unchecked,
+                  size: 18,
+                  color: completed
+                      ? const Color(0xFF4CAF50)
+                      : const Color(0xFFB57F50),
+                ),
+              )
+            else
+              Icon(iconForItem(item), size: 16, color: const Color(0xFFB57F50)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                titleForItem(item),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF6D4C41),
+                  decoration: completed ? TextDecoration.lineThrough : null,
+                ),
               ),
             ),
-          ),
-          if (item.startDate != null)
-            Text(
-              formatTime(item.startDate!),
-              style: const TextStyle(fontSize: 11, color: Color(0xFF8D6E63)),
-            ),
-        ],
+            if (item.startDate != null)
+              Text(
+                formatTime(item.startDate!),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF8D6E63)),
+              ),
+          ],
+        ),
       ),
     );
   }
 
   // ── Week View ─────────────────────────────────────────────────────────────
-  Widget _buildCozyWeekView(List<SchedulableEntity> items, DateTime focus) {
+  Widget _buildCozyWeekView(List<SchedulableEntity> items, DateTime focus,
+      {Function(SchedulableEntity)? onItemTap,
+      Function(SchedulableEntity)? onToggleComplete}) {
     final weekStart = focus.subtract(Duration(days: focus.weekday - 1));
     final grouped = groupByDay(items);
 
@@ -2648,7 +2768,8 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
                       children: dayItems.isEmpty
                           ? [const SizedBox(height: 4)]
                           : dayItems
-                              .map((item) => _cozyWeekEventChip(item))
+                              .map((item) => _cozyWeekEventChip(item,
+                                  onItemTap: onItemTap))
                               .toList(),
                     ),
                   ),
@@ -2661,35 +2782,45 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
     );
   }
 
-  Widget _cozyWeekEventChip(SchedulableEntity item) {
+  Widget _cozyWeekEventChip(SchedulableEntity item,
+      {Function(SchedulableEntity)? onItemTap}) {
     final key = item is BaseEntity
         ? ValueKey((item as BaseEntity).id)
         : ValueKey(item.hashCode);
-    return Container(
-      key: key,
-      margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 1),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFF8E1), Color(0xFFFFF3E0)],
+    final completed = isCompletedItem(item);
+    return GestureDetector(
+      onTap: onItemTap != null ? () => onItemTap(item) : null,
+      child: Container(
+        key: key,
+        margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: completed
+                ? [const Color(0xFFE8F5E9), const Color(0xFFC8E6C9)]
+                : [const Color(0xFFFFF8E1), const Color(0xFFFFF3E0)],
+          ),
+          borderRadius: BorderRadius.circular(8),
         ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        titleForItem(item),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF6D4C41),
+        child: Text(
+          titleForItem(item),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF6D4C41),
+            decoration: completed ? TextDecoration.lineThrough : null,
+          ),
         ),
       ),
     );
   }
 
   // ── Month View ────────────────────────────────────────────────────────────
-  Widget _buildCozyMonthView(List<SchedulableEntity> items, DateTime focus) {
+  Widget _buildCozyMonthView(List<SchedulableEntity> items, DateTime focus,
+      {Function(SchedulableEntity)? onItemTap,
+      Function(SchedulableEntity)? onToggleComplete}) {
     final firstOfMonth = DateTime(focus.year, focus.month, 1);
     final lastOfMonth = DateTime(focus.year, focus.month + 1, 0);
     final startWeekday = firstOfMonth.weekday;
@@ -2798,9 +2929,8 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
                                         : const Color(0xFF6D4C41),
                                   ),
                                 ),
-                                ...dayEvents
-                                    .take(3)
-                                    .map((item) => _cozyMonthDot(item)),
+                                ...dayEvents.take(3).map((item) =>
+                                    _cozyMonthDot(item, onItemTap: onItemTap)),
                                 if (dayEvents.length > 3)
                                   Text(
                                     '+${dayEvents.length - 3}',
@@ -2825,24 +2955,32 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
     );
   }
 
-  Widget _cozyMonthDot(SchedulableEntity item) {
-    return Container(
-      margin: const EdgeInsets.only(top: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFF8E1), Color(0xFFFFF3E0)],
+  Widget _cozyMonthDot(SchedulableEntity item,
+      {Function(SchedulableEntity)? onItemTap}) {
+    final completed = isCompletedItem(item);
+    return GestureDetector(
+      onTap: onItemTap != null ? () => onItemTap(item) : null,
+      child: Container(
+        margin: const EdgeInsets.only(top: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: completed
+                ? [const Color(0xFFE8F5E9), const Color(0xFFC8E6C9)]
+                : [const Color(0xFFFFF8E1), const Color(0xFFFFF3E0)],
+          ),
+          borderRadius: BorderRadius.circular(6),
         ),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        titleForItem(item),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF6D4C41),
+        child: Text(
+          titleForItem(item),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF6D4C41),
+            decoration: completed ? TextDecoration.lineThrough : null,
+          ),
         ),
       ),
     );

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pluc/core/entities.dart';
+import 'package:pluc/core/providers.dart';
+import 'package:pluc/features/calendar/domain/repositories/calendar_repository.dart';
 import 'providers/app_providers.dart';
 
 class CalendarScreen extends ConsumerWidget {
@@ -11,6 +13,8 @@ class CalendarScreen extends ConsumerWidget {
     final viewMode = ref.watch(calendarViewModeProvider);
     final focusDate = ref.watch(calendarFocusDateProvider);
     final theme = ref.watch(currentThemeProvider);
+    final taskRepo = ref.watch(taskRepositoryProvider);
+    final userId = ref.watch(currentUserIdProvider);
 
     // Compute the date range for the current mode so the provider fetches
     // the correct window of data.
@@ -93,6 +97,55 @@ class CalendarScreen extends ConsumerWidget {
               schedulableItems,
               viewMode: viewMode,
               focusDate: focusDate,
+              onItemTap: (entity) async {
+                if (entity is SchedulableItem &&
+                    entity.moduleSource == 'tasks') {
+                  final task = await taskRepo.getTaskById(entity.id, userId);
+                  if (task != null && context.mounted) {
+                    final edited = await theme.showTaskDialog(
+                      context: context,
+                      existingTask: task,
+                    );
+                    if (edited != null) {
+                      await taskRepo
+                          .saveTask(edited.copyWith(updatedAt: DateTime.now()));
+                      ref.read(calendarRefreshKeyProvider.notifier).state++;
+                    }
+                  }
+                } else if (entity is SchedulableItem &&
+                    entity.moduleSource == 'journal') {
+                  final journalRepo = ref.read(journalRepositoryProvider);
+                  final entry =
+                      await journalRepo.getEntryById(entity.id, userId);
+                  if (entry != null && context.mounted) {
+                    final edited = await theme.showJournalDialog(
+                      context: context,
+                      existingEntry: entry,
+                    );
+                    if (edited != null) {
+                      await journalRepo.saveEntry(
+                          edited.copyWith(updatedAt: DateTime.now()));
+                      ref.read(calendarRefreshKeyProvider.notifier).state++;
+                    }
+                  }
+                }
+              },
+              onToggleComplete: (entity) async {
+                if (entity is SchedulableItem &&
+                    entity.moduleSource == 'tasks') {
+                  final task = await taskRepo.getTaskById(entity.id, userId);
+                  if (task != null) {
+                    final newStatus =
+                        task.status == 'completed' ? 'pending' : 'completed';
+                    final updated = task.copyWith(
+                      status: newStatus,
+                      updatedAt: DateTime.now(),
+                    );
+                    await taskRepo.saveTask(updated);
+                    ref.read(calendarRefreshKeyProvider.notifier).state++;
+                  }
+                }
+              },
             );
           }(),
         ),
