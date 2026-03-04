@@ -50,9 +50,7 @@ class TaskRepositoryImpl implements TaskRepository {
               startDate: Value(task.startDate),
               endDate: Value(task.endDate),
               recurrenceRule: Value(task.recurrenceRule),
-              reminderSettings: Value(task.reminderSettings != null
-                  ? task.reminderSettings.toString()
-                  : null),
+              reminderSettings: Value(task.reminderSettings?.toString()),
               status: Value(task.status ?? 'pending'),
               linkedEntityId: Value(task.linkedEntityId),
               createdAt: Value(task.createdAt),
@@ -83,8 +81,12 @@ class TaskRepositoryImpl implements TaskRepository {
             ..where((t) =>
                 t.ownerId.equals(ownerId) &
                 (
-                    // Tasks with a startDate in range
-                    t.startDate.isBetweenValues(start, end) |
+                    // Tasks whose start–end range overlaps the query window
+                    (t.startDate.isSmallerOrEqualValue(end) &
+                            t.endDate.isBiggerOrEqualValue(start)) |
+                        // Tasks with no endDate — startDate in range
+                        (t.endDate.isNull() &
+                            t.startDate.isBetweenValues(start, end)) |
                         // Tasks without startDate — fall back to createdAt
                         (t.startDate.isNull() &
                             t.createdAt.isBetweenValues(start, end)))))

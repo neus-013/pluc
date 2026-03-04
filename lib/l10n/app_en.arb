@@ -68,5 +68,26 @@
   "eventUpdated": "Event updated!",
   "selectDate": "Select date",
   "selectTime": "Select time",
-  "events": "Events"
+  "events": "Events",
+  "selectStartDate": "Start date",
+  "selectEndDate": "End date",
+  "selectStartTime": "Start time",
+  "selectEndTime": "End time",
+  "eventTitle": "Title",
+  "noEventsOnDate": "No events on {date}",
+  "@noEventsOnDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "nothingPlannedForDate": "Nothing planned for {date}",
+  "@nothingPlannedForDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  }
 }

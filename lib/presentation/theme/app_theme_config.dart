@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:pluc/core/domain/entities/task.dart';
 import 'package:pluc/features/journal/domain/entities/journal_entry.dart';
@@ -6,6 +7,7 @@ import 'package:pluc/core/entities.dart';
 import 'package:pluc/features/calendar/domain/repositories/calendar_repository.dart';
 import 'package:pluc/presentation/providers/app_providers.dart'
     show CalendarViewMode;
+import 'package:pluc/l10n/app_localizations.dart';
 
 /// App-wide theme contract that controls ALL structure and styling.
 ///
@@ -217,8 +219,20 @@ abstract class _BaseThemeConfig implements AppThemeConfig {
     for (final item in items) {
       final date = item.startDate;
       if (date == null) continue;
-      final key = DateTime(date.year, date.month, date.day);
-      grouped.putIfAbsent(key, () => <SchedulableEntity>[]).add(item);
+      final startKey = DateTime(date.year, date.month, date.day);
+
+      // If the item has an endDate on a different day, add it to each day
+      if (item.endDate != null) {
+        final endKey = DateTime(
+            item.endDate!.year, item.endDate!.month, item.endDate!.day);
+        var current = startKey;
+        while (!current.isAfter(endKey)) {
+          grouped.putIfAbsent(current, () => <SchedulableEntity>[]).add(item);
+          current = current.add(const Duration(days: 1));
+        }
+      } else {
+        grouped.putIfAbsent(startKey, () => <SchedulableEntity>[]).add(item);
+      }
     }
 
     final keys = grouped.keys.toList()..sort();
@@ -383,8 +397,9 @@ abstract class _BaseThemeConfig implements AppThemeConfig {
           ),
           const Divider(),
           ...moduleOrder.where((m) => m != 'calendar').map((moduleId) {
-            if (enabledModules[moduleId] != true)
+            if (enabledModules[moduleId] != true) {
               return const SizedBox.shrink();
+            }
             return buildDrawerItem(
               key: Key('drawer_$moduleId'),
               label: moduleLabels[moduleId] ?? moduleId,
@@ -737,6 +752,7 @@ abstract class _BaseThemeConfig implements AppThemeConfig {
   String _monthName(int month, int year) => '${_months[month]} $year';
 
   // Calendar date range helpers ─────────────────────────────────────────────
+  @override
   (DateTime, DateTime) dateRangeForMode(CalendarViewMode mode, DateTime focus) {
     switch (mode) {
       case CalendarViewMode.day:
@@ -815,7 +831,7 @@ abstract class _BaseThemeConfig implements AppThemeConfig {
     required Function(String) onThemeChanged,
   }) {
     return DropdownButtonFormField<String>(
-      value: currentThemeKey,
+      initialValue: currentThemeKey,
       decoration: const InputDecoration(
         border: OutlineInputBorder(),
         isDense: true,
@@ -937,7 +953,7 @@ class ModernMinimalTheme extends _BaseThemeConfig {
       );
 
   @override
-  DrawerThemeData get drawerTheme => DrawerThemeData(
+  DrawerThemeData get drawerTheme => const DrawerThemeData(
         backgroundColor: Colors.white,
       );
 
@@ -1318,12 +1334,17 @@ class ModernMinimalTheme extends _BaseThemeConfig {
     CalendarEvent? existingEvent,
     DateTime? initialDate,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     final titleCtrl = TextEditingController(text: existingEvent?.title ?? '');
     final descCtrl =
         TextEditingController(text: existingEvent?.description ?? '');
-    DateTime? selectedDate = existingEvent?.startDate ?? initialDate;
-    TimeOfDay? selectedTime = existingEvent?.startDate != null
+    DateTime? startDate = existingEvent?.startDate ?? initialDate;
+    TimeOfDay? startTime = existingEvent?.startDate != null
         ? TimeOfDay.fromDateTime(existingEvent!.startDate!)
+        : null;
+    DateTime? endDate = existingEvent?.endDate;
+    TimeOfDay? endTime = existingEvent?.endDate != null
+        ? TimeOfDay.fromDateTime(existingEvent!.endDate!)
         : null;
 
     return showDialog<CalendarEvent>(
@@ -1334,7 +1355,7 @@ class ModernMinimalTheme extends _BaseThemeConfig {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           backgroundColor: Colors.white,
           title: Text(
-            existingEvent == null ? 'New Event' : 'Edit Event',
+            existingEvent == null ? l10n.newEvent : l10n.editEvent,
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           content: SingleChildScrollView(
@@ -1343,55 +1364,95 @@ class ModernMinimalTheme extends _BaseThemeConfig {
               children: [
                 TextField(
                   controller: titleCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.eventTitle,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: descCtrl,
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.description,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+                // Start date
                 OutlinedButton.icon(
                   icon: const Icon(Icons.calendar_today, size: 18),
                   label: Text(
-                    selectedDate == null
-                        ? 'Select date'
-                        : formatDate(selectedDate!),
+                    startDate == null
+                        ? l10n.selectStartDate
+                        : formatDate(startDate!),
                   ),
                   onPressed: () async {
                     final picked = await showDatePicker(
                       context: ctx,
-                      initialDate: selectedDate ?? DateTime.now(),
+                      initialDate: startDate ?? DateTime.now(),
                       firstDate: DateTime(2000),
                       lastDate: DateTime(2100),
                     );
                     if (picked != null) {
-                      setDialogState(() => selectedDate = picked);
+                      setDialogState(() => startDate = picked);
                     }
                   },
                 ),
                 const SizedBox(height: 8),
+                // Start time
                 OutlinedButton.icon(
                   icon: const Icon(Icons.access_time, size: 18),
                   label: Text(
-                    selectedTime == null
-                        ? 'Select time'
-                        : '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
+                    startTime == null
+                        ? l10n.selectStartTime
+                        : '${startTime!.hour.toString().padLeft(2, '0')}:${startTime!.minute.toString().padLeft(2, '0')}',
                   ),
                   onPressed: () async {
                     final picked = await showTimePicker(
                       context: ctx,
-                      initialTime: selectedTime ?? TimeOfDay.now(),
+                      initialTime: startTime ?? TimeOfDay.now(),
                     );
                     if (picked != null) {
-                      setDialogState(() => selectedTime = picked);
+                      setDialogState(() => startTime = picked);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                // End date
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.event, size: 18),
+                  label: Text(
+                    endDate == null ? l10n.selectEndDate : formatDate(endDate!),
+                  ),
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: endDate ?? startDate ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => endDate = picked);
+                    }
+                  },
+                ),
+                const SizedBox(height: 8),
+                // End time
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.access_time_filled, size: 18),
+                  label: Text(
+                    endTime == null
+                        ? l10n.selectEndTime
+                        : '${endTime!.hour.toString().padLeft(2, '0')}:${endTime!.minute.toString().padLeft(2, '0')}',
+                  ),
+                  onPressed: () async {
+                    final picked = await showTimePicker(
+                      context: ctx,
+                      initialTime: endTime ?? startTime ?? TimeOfDay.now(),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => endTime = picked);
                     }
                   },
                 ),
@@ -1401,20 +1462,30 @@ class ModernMinimalTheme extends _BaseThemeConfig {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () {
                 if (titleCtrl.text.trim().isEmpty) return;
                 final now = DateTime.now();
-                DateTime? finalStart = selectedDate;
-                if (finalStart != null && selectedTime != null) {
+                DateTime? finalStart = startDate;
+                if (finalStart != null && startTime != null) {
                   finalStart = DateTime(
                     finalStart.year,
                     finalStart.month,
                     finalStart.day,
-                    selectedTime!.hour,
-                    selectedTime!.minute,
+                    startTime!.hour,
+                    startTime!.minute,
+                  );
+                }
+                DateTime? finalEnd = endDate;
+                if (finalEnd != null && endTime != null) {
+                  finalEnd = DateTime(
+                    finalEnd.year,
+                    finalEnd.month,
+                    finalEnd.day,
+                    endTime!.hour,
+                    endTime!.minute,
                   );
                 }
                 final result = existingEvent != null
@@ -1424,6 +1495,7 @@ class ModernMinimalTheme extends _BaseThemeConfig {
                             ? null
                             : descCtrl.text.trim(),
                         startDate: finalStart,
+                        endDate: finalEnd,
                         updatedAt: now,
                       )
                     : CalendarEvent(
@@ -1437,6 +1509,7 @@ class ModernMinimalTheme extends _BaseThemeConfig {
                             ? null
                             : descCtrl.text.trim(),
                         startDate: finalStart,
+                        endDate: finalEnd,
                         status: 'active',
                       );
                 Navigator.pop(ctx, result);
@@ -1444,7 +1517,7 @@ class ModernMinimalTheme extends _BaseThemeConfig {
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF6C8EBF),
               ),
-              child: Text(existingEvent == null ? 'Create' : 'Save'),
+              child: Text(existingEvent == null ? l10n.create : l10n.save),
             ),
           ],
         ),
@@ -1487,88 +1560,132 @@ class ModernMinimalTheme extends _BaseThemeConfig {
       {Function(SchedulableEntity)? onItemTap,
       Function(SchedulableEntity)? onToggleComplete}) {
     final dayKey = DateTime(day.year, day.month, day.day);
-    final dayItems = items
-        .where((e) =>
-            e.startDate != null &&
-            DateTime(e.startDate!.year, e.startDate!.month, e.startDate!.day) ==
-                dayKey)
-        .toList()
+    // Include items whose date range overlaps this day
+    final dayItems = items.where((e) {
+      if (e.startDate == null) return false;
+      final itemStartDay =
+          DateTime(e.startDate!.year, e.startDate!.month, e.startDate!.day);
+      final itemEndDay = e.endDate != null
+          ? DateTime(e.endDate!.year, e.endDate!.month, e.endDate!.day)
+          : itemStartDay;
+      return !dayKey.isBefore(itemStartDay) && !dayKey.isAfter(itemEndDay);
+    }).toList()
       ..sort(
           (a, b) => (a.startDate ?? dayKey).compareTo(b.startDate ?? dayKey));
 
     if (dayItems.isEmpty) {
-      return buildEmptyState(
-        icon: Icons.calendar_view_day,
-        label: 'No events on ${formatDate(day)}',
-        color: const Color(0xFF9EADB8),
+      return Builder(
+        builder: (context) {
+          final l10n = AppLocalizations.of(context);
+          return buildEmptyState(
+            icon: Icons.calendar_view_day,
+            label: l10n?.noEventsOnDate(formatDate(day)) ??
+                'No events on ${formatDate(day)}',
+            color: const Color(0xFF9EADB8),
+          );
+        },
       );
     }
 
-    // Time-slot day view: 24-hour column
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      itemCount: 24,
-      itemBuilder: (context, hour) {
-        final hourItems = dayItems.where((item) {
-          final h = item.startDate?.hour ?? -1;
-          return h == hour;
-        }).toList();
+    const double hourHeight = 60.0;
+    const double leftGutter = 52.0;
 
-        return Container(
-          key: ValueKey('hour_$hour'),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: const Color(0xFFE6E9EF),
-                width: 0.5,
-              ),
-            ),
-          ),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 52,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 6, right: 8),
-                    child: Text(
-                      '${hour.toString().padLeft(2, '0')}:00',
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF7A869A),
-                        fontWeight: FontWeight.w500,
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: SizedBox(
+        height: 24 * hourHeight,
+        child: Stack(
+          children: [
+            // Hour grid lines
+            ...List.generate(24, (hour) {
+              return Positioned(
+                top: hour * hourHeight,
+                left: 0,
+                right: 0,
+                height: hourHeight,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: leftGutter,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 6, right: 8),
+                        child: Text(
+                          '${hour.toString().padLeft(2, '0')}:00',
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF7A869A),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    constraints: const BoxConstraints(minHeight: 44),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    child: hourItems.isEmpty
-                        ? const SizedBox.shrink()
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: hourItems
-                                .map((item) => _modernEventChip(item,
-                                    onItemTap: onItemTap,
-                                    onToggleComplete: onToggleComplete))
-                                .toList(),
+                    Expanded(
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: Color(0xFFE6E9EF),
+                              width: 0.5,
+                            ),
                           ),
-                  ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        );
-      },
+              );
+            }),
+            // Event blocks spanning their full duration
+            ...dayItems.map((item) {
+              // Compute start minutes clamped to this day
+              final itemStartDay = DateTime(item.startDate!.year,
+                  item.startDate!.month, item.startDate!.day);
+              final int startMinutes;
+              if (itemStartDay.isBefore(dayKey)) {
+                startMinutes = 0; // started before today
+              } else {
+                startMinutes =
+                    item.startDate!.hour * 60 + item.startDate!.minute;
+              }
+
+              // Compute end minutes clamped to this day
+              final int endMinutes;
+              if (item.endDate != null) {
+                final itemEndDay = DateTime(
+                    item.endDate!.year, item.endDate!.month, item.endDate!.day);
+                if (itemEndDay.isAfter(dayKey)) {
+                  endMinutes = 24 * 60; // extends past today
+                } else {
+                  endMinutes = item.endDate!.hour * 60 + item.endDate!.minute;
+                }
+              } else {
+                endMinutes = startMinutes + 60; // default 1h
+              }
+
+              final top = startMinutes * hourHeight / 60;
+              final height = math.max(
+                  (endMinutes - startMinutes) * hourHeight / 60,
+                  hourHeight / 2);
+
+              return Positioned(
+                top: top,
+                left: leftGutter + 4,
+                right: 4,
+                height: height,
+                child: _modernEventBlock(item, startMinutes, endMinutes,
+                    onItemTap: onItemTap, onToggleComplete: onToggleComplete),
+              );
+            }),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _modernEventChip(SchedulableEntity item,
+  Widget _modernEventBlock(
+      SchedulableEntity item, int startMinutes, int endMinutes,
       {Function(SchedulableEntity)? onItemTap,
       Function(SchedulableEntity)? onToggleComplete}) {
     final key = item is BaseEntity
@@ -1576,11 +1693,15 @@ class ModernMinimalTheme extends _BaseThemeConfig {
         : ValueKey(item.hashCode);
     final completed = isCompletedItem(item);
     final isTask = isTaskItem(item);
+    final startStr =
+        '${(startMinutes ~/ 60).toString().padLeft(2, '0')}:${(startMinutes % 60).toString().padLeft(2, '0')}';
+    final endStr =
+        '${(endMinutes ~/ 60).toString().padLeft(2, '0')}:${(endMinutes % 60).toString().padLeft(2, '0')}';
     return GestureDetector(
       onTap: onItemTap != null ? () => onItemTap(item) : null,
       child: Container(
         key: key,
-        margin: const EdgeInsets.symmetric(vertical: 2),
+        margin: const EdgeInsets.symmetric(vertical: 1),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: completed ? const Color(0xFFE8F5E9) : const Color(0xFFE3F0FF),
@@ -1590,40 +1711,50 @@ class ModernMinimalTheme extends _BaseThemeConfig {
                   ? const Color(0xFFA5D6A7)
                   : const Color(0xFFB3D4F7)),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (isTask && onToggleComplete != null)
-              GestureDetector(
-                onTap: () => onToggleComplete(item),
-                child: Icon(
-                  completed ? Icons.check_circle : Icons.radio_button_unchecked,
-                  size: 18,
-                  color: completed
-                      ? const Color(0xFF4CAF50)
-                      : const Color(0xFF5A8CC8),
+            Row(
+              children: [
+                if (isTask && onToggleComplete != null)
+                  GestureDetector(
+                    onTap: () => onToggleComplete(item),
+                    child: Icon(
+                      completed
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      size: 18,
+                      color: completed
+                          ? const Color(0xFF4CAF50)
+                          : const Color(0xFF5A8CC8),
+                    ),
+                  )
+                else
+                  Icon(iconForItem(item),
+                      size: 14, color: const Color(0xFF5A8CC8)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    titleForItem(item),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      decoration: completed ? TextDecoration.lineThrough : null,
+                      color: completed ? const Color(0xFF7A869A) : null,
+                    ),
+                  ),
                 ),
-              )
-            else
-              Icon(iconForItem(item), size: 14, color: const Color(0xFF5A8CC8)),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                titleForItem(item),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  decoration: completed ? TextDecoration.lineThrough : null,
-                  color: completed ? const Color(0xFF7A869A) : null,
-                ),
-              ),
+              ],
             ),
-            if (item.startDate != null)
-              Text(
-                formatTime(item.startDate!),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                '$startStr – $endStr',
                 style: const TextStyle(fontSize: 10, color: Color(0xFF7A869A)),
               ),
+            ),
           ],
         ),
       ),
@@ -1635,18 +1766,17 @@ class ModernMinimalTheme extends _BaseThemeConfig {
       {Function(SchedulableEntity)? onItemTap,
       Function(SchedulableEntity)? onToggleComplete}) {
     final weekStart = focus.subtract(Duration(days: focus.weekday - 1));
-    final grouped = groupByDay(items);
+    const double hourHeight = 48.0;
+    const double gutterWidth = 36.0;
 
     return Column(
       children: [
         // Weekday header row
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          padding: const EdgeInsets.only(left: gutterWidth, top: 6, bottom: 6),
           decoration: const BoxDecoration(
             color: Color(0xFFF1F4F8),
-            border: Border(
-              bottom: BorderSide(color: Color(0xFFE6E9EF)),
-            ),
+            border: Border(bottom: BorderSide(color: Color(0xFFE6E9EF))),
           ),
           child: Row(
             children: List.generate(7, (i) {
@@ -1677,7 +1807,7 @@ class ModernMinimalTheme extends _BaseThemeConfig {
                       Text(
                         '${d.day}',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight:
                               isToday ? FontWeight.w800 : FontWeight.w500,
                           color: isToday
@@ -1692,41 +1822,123 @@ class ModernMinimalTheme extends _BaseThemeConfig {
             }),
           ),
         ),
-        // Day columns with events
+        // Time-grid body
         Expanded(
           child: SingleChildScrollView(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: List.generate(7, (i) {
-                final d = weekStart.add(Duration(days: i));
-                final dayKey = DateTime(d.year, d.month, d.day);
-                final dayItems = grouped[dayKey] ?? [];
-
-                return Expanded(
-                  child: Container(
-                    key: ValueKey('week_day_$i'),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        right: i < 6
-                            ? const BorderSide(
-                                color: Color(0xFFE6E9EF), width: 0.5)
-                            : BorderSide.none,
+            child: SizedBox(
+              height: 24 * hourHeight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Hour gutter
+                  SizedBox(
+                    width: gutterWidth,
+                    height: 24 * hourHeight,
+                    child: Stack(
+                      children: List.generate(
+                        24,
+                        (h) => Positioned(
+                          top: h * hourHeight,
+                          left: 0,
+                          right: 0,
+                          height: hourHeight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 2, right: 4),
+                            child: Text(
+                              h.toString().padLeft(2, '0'),
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(
+                                fontSize: 9,
+                                color: Color(0xFF7A869A),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                    constraints: const BoxConstraints(minHeight: 120),
-                    padding: const EdgeInsets.all(2),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: dayItems.isEmpty
-                          ? [const SizedBox(height: 4)]
-                          : dayItems
-                              .map((item) => _modernWeekEventChip(item,
-                                  onItemTap: onItemTap))
-                              .toList(),
-                    ),
                   ),
-                );
-              }),
+                  // 7 day columns
+                  ...List.generate(7, (i) {
+                    final d = weekStart.add(Duration(days: i));
+                    final dayKey = DateTime(d.year, d.month, d.day);
+                    final nextDayKey = dayKey.add(const Duration(days: 1));
+                    final dayItems = items.where((e) {
+                      if (e.startDate == null) return false;
+                      final s = e.startDate!;
+                      final end = e.endDate ?? s.add(const Duration(hours: 1));
+                      return s.isBefore(nextDayKey) && end.isAfter(dayKey);
+                    }).toList()
+                      ..sort((a, b) => (a.startDate ?? dayKey)
+                          .compareTo(b.startDate ?? dayKey));
+
+                    return Expanded(
+                      child: Container(
+                        height: 24 * hourHeight,
+                        decoration: BoxDecoration(
+                          border: Border(
+                            right: i < 6
+                                ? const BorderSide(
+                                    color: Color(0xFFE6E9EF), width: 0.5)
+                                : BorderSide.none,
+                          ),
+                        ),
+                        child: Stack(
+                          children: [
+                            // Hour grid lines
+                            ...List.generate(
+                              24,
+                              (h) => Positioned(
+                                top: h * hourHeight,
+                                left: 0,
+                                right: 0,
+                                height: hourHeight,
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    border: Border(
+                                      bottom: BorderSide(
+                                        color: Color(0xFFE6E9EF),
+                                        width: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // Events
+                            ...dayItems.map((item) {
+                              final s = item.startDate!;
+                              final e = item.endDate ??
+                                  s.add(const Duration(hours: 1));
+                              final sDay = DateTime(s.year, s.month, s.day);
+                              final eDay = DateTime(e.year, e.month, e.day);
+                              final startMin = sDay.isBefore(dayKey)
+                                  ? 0
+                                  : (s.hour * 60 + s.minute);
+                              final endMin = eDay.isAfter(dayKey)
+                                  ? 24 * 60
+                                  : (e.hour * 60 + e.minute);
+                              final top = startMin * hourHeight / 60;
+                              final height = math.max(
+                                  (endMin - startMin) * hourHeight / 60,
+                                  hourHeight / 3);
+
+                              return Positioned(
+                                top: top,
+                                left: 1,
+                                right: 1,
+                                height: height,
+                                child: _modernWeekEventBlock(item,
+                                    onItemTap: onItemTap),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
             ),
           ),
         ),
@@ -1734,7 +1946,7 @@ class ModernMinimalTheme extends _BaseThemeConfig {
     );
   }
 
-  Widget _modernWeekEventChip(SchedulableEntity item,
+  Widget _modernWeekEventBlock(SchedulableEntity item,
       {Function(SchedulableEntity)? onItemTap}) {
     final key = item is BaseEntity
         ? ValueKey((item as BaseEntity).id)
@@ -1744,18 +1956,23 @@ class ModernMinimalTheme extends _BaseThemeConfig {
       onTap: onItemTap != null ? () => onItemTap(item) : null,
       child: Container(
         key: key,
-        margin: const EdgeInsets.symmetric(vertical: 1, horizontal: 1),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+        margin: const EdgeInsets.symmetric(vertical: 0.5),
+        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
         decoration: BoxDecoration(
           color: completed ? const Color(0xFFE8F5E9) : const Color(0xFFE3F0FF),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(3),
+          border: Border.all(
+            color:
+                completed ? const Color(0xFFA5D6A7) : const Color(0xFFB3D4F7),
+            width: 0.5,
+          ),
         ),
         child: Text(
           titleForItem(item),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontSize: 10,
+            fontSize: 9,
             fontWeight: FontWeight.w500,
             decoration: completed ? TextDecoration.lineThrough : null,
             color: completed ? const Color(0xFF7A869A) : null,
@@ -2630,13 +2847,22 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
     CalendarEvent? existingEvent,
     DateTime? initialDate,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     final titleCtrl = TextEditingController(text: existingEvent?.title ?? '');
     final descCtrl =
         TextEditingController(text: existingEvent?.description ?? '');
-    DateTime? selectedDate = existingEvent?.startDate ?? initialDate;
-    TimeOfDay? selectedTime = existingEvent?.startDate != null
+    DateTime? startDate = existingEvent?.startDate ?? initialDate;
+    TimeOfDay? startTime = existingEvent?.startDate != null
         ? TimeOfDay.fromDateTime(existingEvent!.startDate!)
         : null;
+    DateTime? endDate = existingEvent?.endDate;
+    TimeOfDay? endTime = existingEvent?.endDate != null
+        ? TimeOfDay.fromDateTime(existingEvent!.endDate!)
+        : null;
+
+    const cozyBorder = BorderSide(color: Color(0xFFC39A7A));
+    final cozyShape =
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(14));
 
     return showDialog<CalendarEvent>(
       context: context,
@@ -2646,7 +2872,7 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           backgroundColor: const Color(0xFFFFFCF5),
           title: Text(
-            existingEvent == null ? 'New Event' : 'Edit Event',
+            existingEvent == null ? l10n.newEvent : l10n.editEvent,
             style: const TextStyle(
               fontWeight: FontWeight.w700,
               color: Color(0xFF5D4037),
@@ -2659,7 +2885,7 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
                 TextField(
                   controller: titleCtrl,
                   decoration: InputDecoration(
-                    labelText: 'Title',
+                    labelText: l10n.eventTitle,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -2672,7 +2898,7 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
                   controller: descCtrl,
                   maxLines: 3,
                   decoration: InputDecoration(
-                    labelText: 'Description',
+                    labelText: l10n.description,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -2680,55 +2906,97 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
                     fillColor: const Color(0xFFFFF7EC),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+                // Start date
                 OutlinedButton.icon(
                   icon: const Icon(Icons.calendar_today,
                       size: 18, color: Color(0xFFB57F50)),
                   label: Text(
-                    selectedDate == null
-                        ? 'Select date'
-                        : formatDate(selectedDate!),
+                    startDate == null
+                        ? l10n.selectStartDate
+                        : formatDate(startDate!),
                     style: const TextStyle(color: Color(0xFF6D4C41)),
                   ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFC39A7A)),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                  ),
+                      side: cozyBorder, shape: cozyShape),
                   onPressed: () async {
                     final picked = await showDatePicker(
                       context: ctx,
-                      initialDate: selectedDate ?? DateTime.now(),
+                      initialDate: startDate ?? DateTime.now(),
                       firstDate: DateTime(2000),
                       lastDate: DateTime(2100),
                     );
                     if (picked != null) {
-                      setDialogState(() => selectedDate = picked);
+                      setDialogState(() => startDate = picked);
                     }
                   },
                 ),
                 const SizedBox(height: 8),
+                // Start time
                 OutlinedButton.icon(
                   icon: const Icon(Icons.access_time,
                       size: 18, color: Color(0xFFB57F50)),
                   label: Text(
-                    selectedTime == null
-                        ? 'Select time'
-                        : '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
+                    startTime == null
+                        ? l10n.selectStartTime
+                        : '${startTime!.hour.toString().padLeft(2, '0')}:${startTime!.minute.toString().padLeft(2, '0')}',
                     style: const TextStyle(color: Color(0xFF6D4C41)),
                   ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFC39A7A)),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                  ),
+                      side: cozyBorder, shape: cozyShape),
                   onPressed: () async {
                     final picked = await showTimePicker(
                       context: ctx,
-                      initialTime: selectedTime ?? TimeOfDay.now(),
+                      initialTime: startTime ?? TimeOfDay.now(),
                     );
                     if (picked != null) {
-                      setDialogState(() => selectedTime = picked);
+                      setDialogState(() => startTime = picked);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                // End date
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.event,
+                      size: 18, color: Color(0xFFB57F50)),
+                  label: Text(
+                    endDate == null ? l10n.selectEndDate : formatDate(endDate!),
+                    style: const TextStyle(color: Color(0xFF6D4C41)),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                      side: cozyBorder, shape: cozyShape),
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: endDate ?? startDate ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => endDate = picked);
+                    }
+                  },
+                ),
+                const SizedBox(height: 8),
+                // End time
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.access_time_filled,
+                      size: 18, color: Color(0xFFB57F50)),
+                  label: Text(
+                    endTime == null
+                        ? l10n.selectEndTime
+                        : '${endTime!.hour.toString().padLeft(2, '0')}:${endTime!.minute.toString().padLeft(2, '0')}',
+                    style: const TextStyle(color: Color(0xFF6D4C41)),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                      side: cozyBorder, shape: cozyShape),
+                  onPressed: () async {
+                    final picked = await showTimePicker(
+                      context: ctx,
+                      initialTime: endTime ?? startTime ?? TimeOfDay.now(),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => endTime = picked);
                     }
                   },
                 ),
@@ -2738,21 +3006,31 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel',
-                  style: TextStyle(color: Color(0xFF8D6E63))),
+              child: Text(l10n.cancel,
+                  style: const TextStyle(color: Color(0xFF8D6E63))),
             ),
             FilledButton(
               onPressed: () {
                 if (titleCtrl.text.trim().isEmpty) return;
                 final now = DateTime.now();
-                DateTime? finalStart = selectedDate;
-                if (finalStart != null && selectedTime != null) {
+                DateTime? finalStart = startDate;
+                if (finalStart != null && startTime != null) {
                   finalStart = DateTime(
                     finalStart.year,
                     finalStart.month,
                     finalStart.day,
-                    selectedTime!.hour,
-                    selectedTime!.minute,
+                    startTime!.hour,
+                    startTime!.minute,
+                  );
+                }
+                DateTime? finalEnd = endDate;
+                if (finalEnd != null && endTime != null) {
+                  finalEnd = DateTime(
+                    finalEnd.year,
+                    finalEnd.month,
+                    finalEnd.day,
+                    endTime!.hour,
+                    endTime!.minute,
                   );
                 }
                 final result = existingEvent != null
@@ -2762,6 +3040,7 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
                             ? null
                             : descCtrl.text.trim(),
                         startDate: finalStart,
+                        endDate: finalEnd,
                         updatedAt: now,
                       )
                     : CalendarEvent(
@@ -2775,6 +3054,7 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
                             ? null
                             : descCtrl.text.trim(),
                         startDate: finalStart,
+                        endDate: finalEnd,
                         status: 'active',
                       );
                 Navigator.pop(ctx, result);
@@ -2784,7 +3064,7 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
               ),
-              child: Text(existingEvent == null ? 'Create' : 'Save'),
+              child: Text(existingEvent == null ? l10n.create : l10n.save),
             ),
           ],
         ),
@@ -2918,84 +3198,115 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
       {Function(SchedulableEntity)? onItemTap,
       Function(SchedulableEntity)? onToggleComplete}) {
     final dayKey = DateTime(day.year, day.month, day.day);
-    final dayItems = items
-        .where((e) =>
-            e.startDate != null &&
-            DateTime(e.startDate!.year, e.startDate!.month, e.startDate!.day) ==
-                dayKey)
-        .toList()
+    final nextDay = dayKey.add(const Duration(days: 1));
+
+    // Items that overlap this day (start < nextDay && end > dayKey)
+    final dayItems = items.where((e) {
+      if (e.startDate == null) return false;
+      final s = e.startDate!;
+      final eEnd = e.endDate ?? s.add(const Duration(hours: 1));
+      return s.isBefore(nextDay) && eEnd.isAfter(dayKey);
+    }).toList()
       ..sort(
           (a, b) => (a.startDate ?? dayKey).compareTo(b.startDate ?? dayKey));
 
     if (dayItems.isEmpty) {
-      return buildEmptyState(
-        icon: Icons.wb_sunny_outlined,
-        label: 'Nothing planned for ${formatDate(day)}',
-        color: const Color(0xFFC5A58A),
-      );
+      return Builder(builder: (context) {
+        final l10n = AppLocalizations.of(context);
+        return buildEmptyState(
+          icon: Icons.wb_sunny_outlined,
+          label: l10n?.nothingPlannedForDate(formatDate(day)) ??
+              'Nothing planned for ${formatDate(day)}',
+          color: const Color(0xFFC5A58A),
+        );
+      });
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      itemCount: 24,
-      itemBuilder: (context, hour) {
-        final hourItems = dayItems.where((item) {
-          final h = item.startDate?.hour ?? -1;
-          return h == hour;
-        }).toList();
+    const double hourHeight = 60.0;
+    const double leftGutter = 56.0;
 
-        return Container(
-          key: ValueKey('hour_$hour'),
-          decoration: const BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: Color(0xFFF3E5D8), width: 0.5),
-            ),
-          ),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 56,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 8, right: 10),
-                    child: Text(
-                      '${hour.toString().padLeft(2, '0')}:00',
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF8D6E63),
-                        fontWeight: FontWeight.w600,
-                      ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      child: SizedBox(
+        height: 24 * hourHeight,
+        child: Stack(
+          children: [
+            // Hour grid lines
+            ...List.generate(24, (hour) {
+              return Positioned(
+                top: hour * hourHeight,
+                left: 0,
+                right: 0,
+                height: hourHeight,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Color(0xFFF3E5D8), width: 0.5),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: Container(
-                    constraints: const BoxConstraints(minHeight: 48),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    child: hourItems.isEmpty
-                        ? const SizedBox.shrink()
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: hourItems
-                                .map((item) => _cozyEventChip(item,
-                                    onItemTap: onItemTap,
-                                    onToggleComplete: onToggleComplete))
-                                .toList(),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: leftGutter,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 4, right: 10),
+                          child: Text(
+                            '${hour.toString().padLeft(2, '0')}:00',
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF8D6E63),
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
-        );
-      },
+              );
+            }),
+            // Event blocks spanning their full duration
+            ...dayItems.map((item) {
+              final s = item.startDate!;
+              final e = item.endDate ?? s.add(const Duration(hours: 1));
+              // Compute start/end minutes clamped to this day
+              final itemStartDay = DateTime(s.year, s.month, s.day);
+              final int startMinutes;
+              if (itemStartDay.isBefore(dayKey)) {
+                startMinutes = 0;
+              } else {
+                startMinutes = s.hour * 60 + s.minute;
+              }
+              final itemEndDay = DateTime(e.year, e.month, e.day);
+              final int endMinutes;
+              if (itemEndDay.isAfter(dayKey)) {
+                endMinutes = 24 * 60;
+              } else {
+                endMinutes = e.hour * 60 + e.minute;
+              }
+              final top = startMinutes * hourHeight / 60;
+              final height = math.max(
+                  (endMinutes - startMinutes) * hourHeight / 60,
+                  hourHeight / 2);
+
+              return Positioned(
+                top: top,
+                left: leftGutter + 4,
+                right: 4,
+                height: height,
+                child: _cozyEventBlock(item, startMinutes, endMinutes,
+                    onItemTap: onItemTap, onToggleComplete: onToggleComplete),
+              );
+            }),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _cozyEventChip(SchedulableEntity item,
+  Widget _cozyEventBlock(
+      SchedulableEntity item, int startMinutes, int endMinutes,
       {Function(SchedulableEntity)? onItemTap,
       Function(SchedulableEntity)? onToggleComplete}) {
     final key = item is BaseEntity
@@ -3003,12 +3314,17 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
         : ValueKey(item.hashCode);
     final completed = isCompletedItem(item);
     final isTask = isTaskItem(item);
+    final startStr =
+        '${(startMinutes ~/ 60).toString().padLeft(2, '0')}:${(startMinutes % 60).toString().padLeft(2, '0')}';
+    final endStr =
+        '${(endMinutes ~/ 60).toString().padLeft(2, '0')}:${(endMinutes % 60).toString().padLeft(2, '0')}';
+
     return GestureDetector(
       onTap: onItemTap != null ? () => onItemTap(item) : null,
       child: Container(
         key: key,
-        margin: const EdgeInsets.symmetric(vertical: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        margin: const EdgeInsets.symmetric(vertical: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: completed
@@ -3024,40 +3340,52 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
             ),
           ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (isTask && onToggleComplete != null)
-              GestureDetector(
-                onTap: () => onToggleComplete(item),
-                child: Icon(
-                  completed ? Icons.check_circle : Icons.radio_button_unchecked,
-                  size: 18,
-                  color: completed
-                      ? const Color(0xFF4CAF50)
-                      : const Color(0xFFB57F50),
+            Row(
+              children: [
+                if (isTask && onToggleComplete != null)
+                  GestureDetector(
+                    onTap: () => onToggleComplete(item),
+                    child: Icon(
+                      completed
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      size: 18,
+                      color: completed
+                          ? const Color(0xFF4CAF50)
+                          : const Color(0xFFB57F50),
+                    ),
+                  )
+                else
+                  Icon(iconForItem(item),
+                      size: 16, color: const Color(0xFFB57F50)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    titleForItem(item),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF6D4C41),
+                      decoration: completed ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
                 ),
-              )
-            else
-              Icon(iconForItem(item), size: 16, color: const Color(0xFFB57F50)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                titleForItem(item),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF6D4C41),
-                  decoration: completed ? TextDecoration.lineThrough : null,
-                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '$startStr – $endStr',
+              style: const TextStyle(
+                fontSize: 11,
+                color: Color(0xFF8D6E63),
               ),
             ),
-            if (item.startDate != null)
-              Text(
-                formatTime(item.startDate!),
-                style: const TextStyle(fontSize: 11, color: Color(0xFF8D6E63)),
-              ),
           ],
         ),
       ),
@@ -3069,20 +3397,19 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
       {Function(SchedulableEntity)? onItemTap,
       Function(SchedulableEntity)? onToggleComplete}) {
     final weekStart = focus.subtract(Duration(days: focus.weekday - 1));
-    final grouped = groupByDay(items);
+    const double hourHeight = 48.0;
+    const double gutterWidth = 38.0;
 
     return Column(
       children: [
         // Cozy weekday header
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          padding: const EdgeInsets.only(left: gutterWidth, top: 8, bottom: 8),
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFFFFF6E9), Color(0xFFFFFBF5)],
             ),
-            border: Border(
-              bottom: BorderSide(color: Color(0xFFF3E5D8)),
-            ),
+            border: Border(bottom: BorderSide(color: Color(0xFFF3E5D8))),
           ),
           child: Row(
             children: List.generate(7, (i) {
@@ -3113,7 +3440,7 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
                       Text(
                         '${d.day}',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight:
                               isToday ? FontWeight.w800 : FontWeight.w500,
                           color: isToday
@@ -3128,40 +3455,123 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
             }),
           ),
         ),
+        // Time-grid body
         Expanded(
           child: SingleChildScrollView(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: List.generate(7, (i) {
-                final d = weekStart.add(Duration(days: i));
-                final dayKey = DateTime(d.year, d.month, d.day);
-                final dayItems = grouped[dayKey] ?? [];
-
-                return Expanded(
-                  child: Container(
-                    key: ValueKey('week_day_$i'),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        right: i < 6
-                            ? const BorderSide(
-                                color: Color(0xFFF3E5D8), width: 0.5)
-                            : BorderSide.none,
+            child: SizedBox(
+              height: 24 * hourHeight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Hour gutter
+                  SizedBox(
+                    width: gutterWidth,
+                    height: 24 * hourHeight,
+                    child: Stack(
+                      children: List.generate(
+                        24,
+                        (h) => Positioned(
+                          top: h * hourHeight,
+                          left: 0,
+                          right: 0,
+                          height: hourHeight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 2, right: 4),
+                            child: Text(
+                              h.toString().padLeft(2, '0'),
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(
+                                fontSize: 9,
+                                color: Color(0xFF8D6E63),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                    constraints: const BoxConstraints(minHeight: 130),
-                    padding: const EdgeInsets.all(3),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: dayItems.isEmpty
-                          ? [const SizedBox(height: 4)]
-                          : dayItems
-                              .map((item) => _cozyWeekEventChip(item,
-                                  onItemTap: onItemTap))
-                              .toList(),
-                    ),
                   ),
-                );
-              }),
+                  // 7 day columns
+                  ...List.generate(7, (i) {
+                    final d = weekStart.add(Duration(days: i));
+                    final dayKey = DateTime(d.year, d.month, d.day);
+                    final nextDayKey = dayKey.add(const Duration(days: 1));
+                    final dayItems = items.where((e) {
+                      if (e.startDate == null) return false;
+                      final s = e.startDate!;
+                      final end = e.endDate ?? s.add(const Duration(hours: 1));
+                      return s.isBefore(nextDayKey) && end.isAfter(dayKey);
+                    }).toList()
+                      ..sort((a, b) => (a.startDate ?? dayKey)
+                          .compareTo(b.startDate ?? dayKey));
+
+                    return Expanded(
+                      child: Container(
+                        height: 24 * hourHeight,
+                        decoration: BoxDecoration(
+                          border: Border(
+                            right: i < 6
+                                ? const BorderSide(
+                                    color: Color(0xFFF3E5D8), width: 0.5)
+                                : BorderSide.none,
+                          ),
+                        ),
+                        child: Stack(
+                          children: [
+                            // Hour grid lines
+                            ...List.generate(
+                              24,
+                              (h) => Positioned(
+                                top: h * hourHeight,
+                                left: 0,
+                                right: 0,
+                                height: hourHeight,
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    border: Border(
+                                      bottom: BorderSide(
+                                        color: Color(0xFFF3E5D8),
+                                        width: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // Events
+                            ...dayItems.map((item) {
+                              final s = item.startDate!;
+                              final e = item.endDate ??
+                                  s.add(const Duration(hours: 1));
+                              final sDay = DateTime(s.year, s.month, s.day);
+                              final eDay = DateTime(e.year, e.month, e.day);
+                              final startMin = sDay.isBefore(dayKey)
+                                  ? 0
+                                  : (s.hour * 60 + s.minute);
+                              final endMin = eDay.isAfter(dayKey)
+                                  ? 24 * 60
+                                  : (e.hour * 60 + e.minute);
+                              final top = startMin * hourHeight / 60;
+                              final height = math.max(
+                                  (endMin - startMin) * hourHeight / 60,
+                                  hourHeight / 3);
+
+                              return Positioned(
+                                top: top,
+                                left: 1,
+                                right: 1,
+                                height: height,
+                                child: _cozyWeekEventBlock(item,
+                                    onItemTap: onItemTap),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
             ),
           ),
         ),
@@ -3169,7 +3579,7 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
     );
   }
 
-  Widget _cozyWeekEventChip(SchedulableEntity item,
+  Widget _cozyWeekEventBlock(SchedulableEntity item,
       {Function(SchedulableEntity)? onItemTap}) {
     final key = item is BaseEntity
         ? ValueKey((item as BaseEntity).id)
@@ -3179,22 +3589,22 @@ class CozyIllustratedTheme extends _BaseThemeConfig {
       onTap: onItemTap != null ? () => onItemTap(item) : null,
       child: Container(
         key: key,
-        margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 1),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        margin: const EdgeInsets.symmetric(vertical: 0.5),
+        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: completed
                 ? [const Color(0xFFE8F5E9), const Color(0xFFC8E6C9)]
                 : [const Color(0xFFFFF8E1), const Color(0xFFFFF3E0)],
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
           titleForItem(item),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontSize: 10,
+            fontSize: 9,
             fontWeight: FontWeight.w600,
             color: const Color(0xFF6D4C41),
             decoration: completed ? TextDecoration.lineThrough : null,

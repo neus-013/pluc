@@ -68,5 +68,26 @@
   "eventUpdated": "¡Evento actualizado!",
   "selectDate": "Seleccionar fecha",
   "selectTime": "Seleccionar hora",
-  "events": "Eventos"
+  "events": "Eventos",
+  "selectStartDate": "Fecha de inicio",
+  "selectEndDate": "Fecha de fin",
+  "selectStartTime": "Hora de inicio",
+  "selectEndTime": "Hora de fin",
+  "eventTitle": "Título",
+  "noEventsOnDate": "Sin eventos el {date}",
+  "@noEventsOnDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "nothingPlannedForDate": "Nada planificado para el {date}",
+  "@nothingPlannedForDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  }
 }

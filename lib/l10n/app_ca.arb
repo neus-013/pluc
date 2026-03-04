@@ -68,5 +68,26 @@
   "eventUpdated": "Esdeveniment actualitzat!",
   "selectDate": "Seleccionar data",
   "selectTime": "Seleccionar hora",
-  "events": "Esdeveniments"
+  "events": "Esdeveniments",
+  "selectStartDate": "Data d'inici",
+  "selectEndDate": "Data de fi",
+  "selectStartTime": "Hora d'inici",
+  "selectEndTime": "Hora de fi",
+  "eventTitle": "Títol",
+  "noEventsOnDate": "Sense esdeveniments el {date}",
+  "@noEventsOnDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "nothingPlannedForDate": "Res planificat per al {date}",
+  "@nothingPlannedForDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  }
 }

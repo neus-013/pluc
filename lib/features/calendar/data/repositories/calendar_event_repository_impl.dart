@@ -47,9 +47,7 @@ class CalendarEventRepositoryImpl implements CalendarEventRepository {
               startDate: Value(event.startDate),
               endDate: Value(event.endDate),
               recurrenceRule: Value(event.recurrenceRule),
-              reminderSettings: Value(event.reminderSettings != null
-                  ? event.reminderSettings.toString()
-                  : null),
+              reminderSettings: Value(event.reminderSettings?.toString()),
               status: Value(event.status ?? 'active'),
               linkedEntityId: Value(event.linkedEntityId),
               createdAt: Value(event.createdAt),
@@ -75,9 +73,16 @@ class CalendarEventRepositoryImpl implements CalendarEventRepository {
       final events = await (db.select(db.calendarEvents)
             ..where((e) =>
                 e.ownerId.equals(ownerId) &
-                (e.startDate.isBetweenValues(start, end) |
-                    (e.startDate.isNull() &
-                        e.createdAt.isBetweenValues(start, end)))))
+                (
+                    // Events whose start–end range overlaps the query window
+                    (e.startDate.isSmallerOrEqualValue(end) &
+                            e.endDate.isBiggerOrEqualValue(start)) |
+                        // Events with no endDate — startDate in range
+                        (e.endDate.isNull() &
+                            e.startDate.isBetweenValues(start, end)) |
+                        // Events with no startDate — fall back to createdAt
+                        (e.startDate.isNull() &
+                            e.createdAt.isBetweenValues(start, end)))))
           .get();
       return events.map(_mapToDomain).toList();
     } catch (e) {
