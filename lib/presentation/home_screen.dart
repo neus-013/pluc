@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pluc/l10n/app_localizations.dart';
-import 'package:pluc/presentation/calendar_screen.dart';
-import 'package:pluc/presentation/task_screen.dart';
-import 'package:pluc/presentation/journal_entry_screen.dart';
+import 'package:pluc/presentation/calendar/calendar_module.dart';
+import 'package:pluc/presentation/tasks/tasks_module.dart';
+import 'package:pluc/presentation/journal/journal_module.dart';
 import 'package:pluc/presentation/settings_screen.dart';
 import 'providers/app_providers.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -63,11 +63,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildCurrentView() {
     switch (_currentView) {
       case 'calendar':
-        return const CalendarScreen();
+        return const CalendarModule();
       case 'tasks':
-        return const TaskScreen();
+        return const TasksModule();
       case 'journal':
-        return const JournalEntryScreen();
+        return const JournalModule();
       case 'settings':
         return const SettingsScreen();
       case 'habits':
@@ -77,7 +77,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       case 'menstruation':
         return _buildPlaceholder(_currentView);
       default:
-        return const CalendarScreen();
+        return const CalendarModule();
     }
   }
 

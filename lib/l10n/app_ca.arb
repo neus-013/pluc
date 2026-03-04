@@ -89,5 +89,43 @@
         "type": "String"
       }
     }
+  },
+  "quickAdd": "Afegir ràpid...",
+  "addTask": "Afegir tasca...",
+  "sortBy": "Ordenar per",
+  "filterTasks": "Filtrar",
+  "priority": "Prioritat",
+  "project": "Projecte",
+  "allTasks": "Totes",
+  "pendingTasks": "Pendents",
+  "completedTasks": "Completades",
+  "searchEntries": "Cercar entrades...",
+  "todayEntry": "Entrada d'avui",
+  "startWriting": "Comença a escriure...",
+  "noEntriesFound": "No s'han trobat entrades",
+  "high": "Alta",
+  "medium": "Mitjana",
+  "low": "Baixa",
+  "dateCreated": "Data de creació",
+  "alphabetical": "Alfabètic",
+  "today": "Avui",
+  "month": "Mes",
+  "day": "Dia",
+  "week": "Setmana",
+  "noTasksYet": "Sense tasques encara",
+  "noEntriesYet": "Sense entrades encara",
+  "tapToAddEvent": "Toca un dia per afegir un event",
+  "writeEntry": "Escriu la teva entrada...",
+  "saveEntry": "Desar entrada",
+  "mood": "Estat d'ànim",
+  "tags": "Etiquetes",
+  "subtasks": "Subtasques",
+  "nItems": "{count} elements",
+  "@nItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

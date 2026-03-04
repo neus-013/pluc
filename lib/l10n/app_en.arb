@@ -89,5 +89,43 @@
         "type": "String"
       }
     }
+  },
+  "quickAdd": "Quick add...",
+  "addTask": "Add task...",
+  "sortBy": "Sort by",
+  "filterTasks": "Filter",
+  "priority": "Priority",
+  "project": "Project",
+  "allTasks": "All",
+  "pendingTasks": "Pending",
+  "completedTasks": "Completed",
+  "searchEntries": "Search entries...",
+  "todayEntry": "Today's Entry",
+  "startWriting": "Start writing...",
+  "noEntriesFound": "No entries found",
+  "high": "High",
+  "medium": "Medium",
+  "low": "Low",
+  "dateCreated": "Date created",
+  "alphabetical": "Alphabetical",
+  "today": "Today",
+  "month": "Month",
+  "day": "Day",
+  "week": "Week",
+  "noTasksYet": "No tasks yet",
+  "noEntriesYet": "No entries yet",
+  "tapToAddEvent": "Tap a day to add an event",
+  "writeEntry": "Write your entry...",
+  "saveEntry": "Save entry",
+  "mood": "Mood",
+  "tags": "Tags",
+  "subtasks": "Subtasks",
+  "nItems": "{count} items",
+  "@nItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

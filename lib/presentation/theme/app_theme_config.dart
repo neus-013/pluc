@@ -28,6 +28,17 @@ abstract class AppThemeConfig {
   ButtonStyle get secondaryButtonStyle;
   ButtonStyle get deleteButtonStyle;
 
+  // ===== SPACING TOKENS =====
+  // Used by preset views to build layouts without hardcoded values.
+  double get spacingXs;
+  double get spacingSm;
+  double get spacingMd;
+  double get spacingLg;
+  double get spacingXl;
+  double get borderRadiusSm;
+  double get borderRadiusMd;
+  double get borderRadiusLg;
+
   // Layout builders
   Widget buildHomeLayout({required Widget child});
 
@@ -931,6 +942,24 @@ abstract class _BaseThemeConfig implements AppThemeConfig {
 }
 
 class ModernMinimalTheme extends _BaseThemeConfig {
+  // ===== SPACING TOKENS =====
+  @override
+  double get spacingXs => 4.0;
+  @override
+  double get spacingSm => 8.0;
+  @override
+  double get spacingMd => 16.0;
+  @override
+  double get spacingLg => 24.0;
+  @override
+  double get spacingXl => 32.0;
+  @override
+  double get borderRadiusSm => 8.0;
+  @override
+  double get borderRadiusMd => 12.0;
+  @override
+  double get borderRadiusLg => 16.0;
+
   @override
   ColorScheme get colorScheme => ColorScheme.fromSeed(
         seedColor: const Color(0xFF6D7D94),
@@ -2142,6 +2171,24 @@ class ModernMinimalTheme extends _BaseThemeConfig {
 }
 
 class CozyIllustratedTheme extends _BaseThemeConfig {
+  // ===== SPACING TOKENS =====
+  @override
+  double get spacingXs => 6.0;
+  @override
+  double get spacingSm => 10.0;
+  @override
+  double get spacingMd => 18.0;
+  @override
+  double get spacingLg => 28.0;
+  @override
+  double get spacingXl => 36.0;
+  @override
+  double get borderRadiusSm => 12.0;
+  @override
+  double get borderRadiusMd => 16.0;
+  @override
+  double get borderRadiusLg => 20.0;
+
   @override
   ColorScheme get colorScheme => ColorScheme.fromSeed(
         seedColor: const Color(0xFFC39A7A),

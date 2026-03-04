@@ -89,5 +89,43 @@
         "type": "String"
       }
     }
+  },
+  "quickAdd": "Añadir rápido...",
+  "addTask": "Añadir tarea...",
+  "sortBy": "Ordenar por",
+  "filterTasks": "Filtrar",
+  "priority": "Prioridad",
+  "project": "Proyecto",
+  "allTasks": "Todas",
+  "pendingTasks": "Pendientes",
+  "completedTasks": "Completadas",
+  "searchEntries": "Buscar entradas...",
+  "todayEntry": "Entrada de hoy",
+  "startWriting": "Empieza a escribir...",
+  "noEntriesFound": "No se encontraron entradas",
+  "high": "Alta",
+  "medium": "Media",
+  "low": "Baja",
+  "dateCreated": "Fecha de creación",
+  "alphabetical": "Alfabético",
+  "today": "Hoy",
+  "month": "Mes",
+  "day": "Día",
+  "week": "Semana",
+  "noTasksYet": "Sin tareas aún",
+  "noEntriesYet": "Sin entradas aún",
+  "tapToAddEvent": "Toca un día para añadir un evento",
+  "writeEntry": "Escribe tu entrada...",
+  "saveEntry": "Guardar entrada",
+  "mood": "Estado de ánimo",
+  "tags": "Etiquetas",
+  "subtasks": "Subtareas",
+  "nItems": "{count} elementos",
+  "@nItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }
